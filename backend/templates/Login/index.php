@@ -575,15 +575,35 @@ createApp({
                     })
                 });
 
-                const data = await response.json();
+                let data = null;
+                const contentType = response.headers.get('content-type') || '';
+                if (response.ok) {
+                    if (contentType.toLowerCase().includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        const text = await response.text();
+                        try {
+                            data = JSON.parse(text);
+                        } catch (e) {
+                            data = { success: true, message: text };
+                        }
+                    }
+                } else {
+                    if (contentType.toLowerCase().includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        const text = await response.text();
+                        data = { success: false, message: text };
+                    }
+                }
 
-                if (data.success) {
+                if (data && data.success) {
                     this.showAlert('Registration successful! Redirecting...', 'success');
                     setTimeout(() => {
                         window.location.href = '/users/dashboard';
                     }, 1000);
                 } else {
-                    this.showAlert(data.message || 'Registration failed', 'error');
+                    this.showAlert((data && data.message) || 'Registration failed', 'error');
                 }
             } catch (error) {
                 this.showAlert('An error occurred. Please try again.', 'error');

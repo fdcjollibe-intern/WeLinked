@@ -42,61 +42,126 @@ class RegisterController extends AppController
         
         // Handle POST request
         if ($this->request->is('post')) {
-            if ($this->request->is('json')) {
+            $isJsonRequest = $this->isJsonRegisterRequest();
+
+            // Log minimal request info for debugging
+            error_log('=== REGISTER REQUEST START ===');
+            error_log('Request Method: ' . $this->request->getMethod());
+            error_log('Content-Type: ' . $this->request->getHeaderLine('Content-Type'));
+            error_log('Accept: ' . $this->request->getHeaderLine('Accept'));
+            error_log('X-Requested-With: ' . $this->request->getHeaderLine('X-Requested-With'));
+            error_log('Detected JSON payload: ' . ($isJsonRequest ? 'YES' : 'NO'));
+            error_log('Request Data: ' . json_encode($this->request->getData()));
+
+            if ($isJsonRequest) {
                 $this->viewBuilder()->disableAutoLayout();
                 $this->autoRender = false;
-                
+
                 $data = $this->request->getData();
-                
+
                 // Validate confirm password
-                if ($data['password'] !== $data['confirmPassword']) {
-                    $this->response = $this->response->withStatus(400)->withType('application/json');
-                    echo json_encode([
+                if (($data['password'] ?? '') !== ($data['confirmPassword'] ?? '')) {
+                    $body = json_encode([
                         'success' => false,
                         'message' => 'Passwords do not match'
                     ]);
-                    return;
+                    return $this->response
+                        ->withStatus(400)
+                        ->withType('application/json')
+                        ->withStringBody($body);
                 }
-                
+
                 $usersTable = $this->fetchTable('Users');
                 $user = $usersTable->newEmptyEntity();
                 $user = $usersTable->patchEntity($user, [
-                    'username' => $data['username'],
-                    'email' => $data['email'],
-                    'password' => $data['password']
+                    'username' => $data['username'] ?? null,
+                    'email' => $data['email'] ?? null,
+                    'password' => $data['password'] ?? null
                 ]);
-                
+
                 if ($usersTable->save($user)) {
                     // Auto-login the user
                     $this->Authentication->setIdentity($user);
-                    
-                    $this->response = $this->response->withType('application/json');
-                    echo json_encode([
+
+                    $body = json_encode([
                         'success' => true,
                         'message' => 'Registration successful',
                         'redirect' => '/users/dashboard'
                     ]);
-                    return;
+                    error_log('=== REGISTER REQUEST END (SUCCESS) ===');
+                    return $this->response
+                        ->withType('application/json')
+                        ->withStringBody($body);
                 }
-                
-                // Get first error message
+
+                // Get validation/save errors
                 $errors = $user->getErrors();
+                error_log('Register save errors: ' . json_encode($errors));
                 $errorMessage = 'Registration failed. Please try again.';
                 if (!empty($errors)) {
                     $firstField = array_key_first($errors);
-                    $errorMessage = reset($errors[$firstField]);
+                    $fieldErrors = $errors[$firstField] ?? [];
+                    if (is_array($fieldErrors)) {
+                        $rawMsg = reset($fieldErrors);
+                    } else {
+                        $rawMsg = (string)$fieldErrors;
+                    }
+
+                    // Map generic unique constraint messages to friendlier text
+                    if (is_array($fieldErrors) && array_key_exists('unique', $fieldErrors)) {
+                        if ($firstField === 'email') {
+                            $errorMessage = 'Email is already registered';
+                        } elseif ($firstField === 'username') {
+                            $errorMessage = 'Username is already taken';
+                        } else {
+                            $errorMessage = $rawMsg;
+                        }
+                    } else {
+                        $errorMessage = $rawMsg;
+                    }
                 }
-                
-                $this->response = $this->response->withStatus(400)->withType('application/json');
-                echo json_encode([
+
+                $body = json_encode([
                     'success' => false,
-                    'message' => $errorMessage
+                    'message' => $errorMessage,
+                    'errors' => $errors
                 ]);
-                return;
+                error_log('=== REGISTER REQUEST END (FAILED) ===');
+                return $this->response
+                    ->withStatus(400)
+                    ->withType('application/json')
+                    ->withStringBody($body);
             }
         }
-        
+
         $this->viewBuilder()->setLayout('login');
         $this->render('/Login/index');
+    }
+
+    /**
+     * Determine whether the current request should be treated as JSON/AJAX register.
+     */
+    private function isJsonRegisterRequest(): bool
+    {
+        if ($this->request->is('json')) {
+            return true;
+        }
+
+        $contentType = strtolower($this->request->getHeaderLine('Content-Type'));
+        if ($contentType !== '' && str_contains($contentType, 'application/json')) {
+            return true;
+        }
+
+        $acceptHeader = strtolower($this->request->getHeaderLine('Accept'));
+        if ($acceptHeader !== '' && str_contains($acceptHeader, 'application/json')) {
+            return true;
+        }
+
+        $requestedWith = strtolower($this->request->getHeaderLine('X-Requested-With'));
+        if ($requestedWith === 'xmlhttprequest') {
+            return true;
+        }
+
+        return false;
     }
 }
