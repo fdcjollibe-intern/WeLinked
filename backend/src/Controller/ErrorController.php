@@ -67,4 +67,18 @@ class ErrorController extends AppController
     public function afterFilter(EventInterface $event): void
     {
     }
+
+    /**
+     * Handle 404 errors for specific routes like .well-known
+     *
+     * @return \Cake\Http\Response|null
+     */
+    public function error404()
+    {
+        $this->response = $this->response->withStatus(404);
+        $this->set('message', 'Not Found');
+        $this->viewBuilder()->setLayout('error');
+        
+        return $this->response;
+    }
 }

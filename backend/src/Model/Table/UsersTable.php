@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Model\Table;
 
+use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
 
@@ -55,5 +56,33 @@ class UsersTable extends Table
             ->minLength('password', 6, 'Password must be at least 6 characters');
 
         return $validator;
+    }
+
+    /**
+     * Login validation rules - only requires username and password
+     */
+    public function validationLogin(Validator $validator): Validator
+    {
+        $validator
+            ->scalar('username')
+            ->notEmptyString('username', 'Username is required');
+
+        $validator
+            ->scalar('password')
+            ->notEmptyString('password', 'Password is required');
+
+        return $validator;
+    }
+
+    /**
+     * Returns a rules checker object that will be used for validating
+     * application integrity.
+     */
+    public function buildRules(RulesChecker $rules): RulesChecker
+    {
+        $rules->add($rules->isUnique(['username']), ['errorField' => 'username']);
+        $rules->add($rules->isUnique(['email']), ['errorField' => 'email']);
+
+        return $rules;
     }
 }

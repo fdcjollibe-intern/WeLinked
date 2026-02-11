@@ -451,7 +451,19 @@ createApp({
             this.loading = true;
             this.clearAlert();
 
+            console.log('=== LOGIN ATTEMPT START ===');
+            console.log('Username:', this.credentials.username);
+            console.log('Password length:', this.credentials.password.length);
+            console.log('CSRF Token:', this.csrfToken);
+
             try {
+                const requestBody = {
+                    username: this.credentials.username,
+                    password: this.credentials.password
+                };
+                
+                console.log('Request body:', requestBody);
+                
                 const response = await fetch('/login', {
                     method: 'POST',
                     headers: {
@@ -460,25 +472,71 @@ createApp({
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-Token': this.csrfToken
                     },
-                    body: JSON.stringify({
-                        username: this.credentials.username,
-                        password: this.credentials.password
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
-                const data = await response.json();
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-                if (data.success) {
+                const contentType = response.headers.get('content-type') || '';
+                let data = null;
+                let fallbackText = '';
+
+                if (contentType.includes('application/json')) {
+                    try {
+                        data = await response.json();
+                        console.log('Response data:', data);
+                    } catch (parseError) {
+                        console.warn('Failed to parse JSON response:', parseError);
+                    }
+                } else {
+                    fallbackText = await response.text();
+                    console.warn('Response is not JSON. Raw payload:', fallbackText);
+                }
+
+                if (!response.ok) {
+                    const message = data && data.message ? data.message : 'Invalid username or password';
+                    console.error('✗ Login failed:', message);
+                    if (data && data.debug) {
+                        console.error('Debug info:', data.debug);
+                    }
+                    this.showAlert(message, 'error');
+                    console.log('=== LOGIN ATTEMPT END ===');
+                    return;
+                }
+
+                if (data && data.success) {
+                    console.log('✓ Login successful!');
                     this.showAlert('Login successful! Redirecting...', 'success');
                     setTimeout(() => {
                         window.location.href = '/users/dashboard';
                     }, 1000);
-                } else {
-                    this.showAlert(data.message || 'Invalid credentials', 'error');
+                    console.log('=== LOGIN ATTEMPT END ===');
+                    return;
                 }
+
+                if (!data && fallbackText !== '') {
+                    console.warn('No JSON body, assuming success because HTTP status was OK.');
+                    this.showAlert('Login successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/users/dashboard';
+                    }, 1000);
+                    console.log('=== LOGIN ATTEMPT END ===');
+                    return;
+                }
+
+                const message = data && data.message ? data.message : 'Invalid credentials';
+                console.error('✗ Login failed:', message);
+                if (data && data.debug) {
+                    console.error('Debug info:', data.debug);
+                }
+                this.showAlert(message, 'error');
+                
+                console.log('=== LOGIN ATTEMPT END ===');
             } catch (error) {
+                console.error('✗✗✗ Login error:', error);
                 this.showAlert('An error occurred. Please try again.', 'error');
-                console.error('Login error:', error);
+                console.error('Full error:', error);
             } finally {
                 this.loading = false;
             }

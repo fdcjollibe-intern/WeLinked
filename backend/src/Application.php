@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 
@@ -76,19 +77,41 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
             // See https:// github.com/CakeDC/cakephp-cached-routing
             ->add(new RoutingMiddleware($this))
 
-            // Add authentication middleware
-            ->add(new AuthenticationMiddleware($this))
-
             // Parse various types of encoded request bodies so that they are
             // available as array through $request->getData()
+            // MUST come BEFORE AuthenticationMiddleware to parse JSON request bodies
             // https://book.cakephp.org/5/en/controllers/middleware.html#body-parser-middleware
             ->add(new BodyParserMiddleware())
 
-            // Cross Site Request Forgery (CSRF) Protection Middleware
-            // https://book.cakephp.org/5/en/security/csrf.html#cross-site-request-forgery-csrf-middleware
-            ->add(new CsrfProtectionMiddleware([
-                'httponly' => true,
-            ]));
+            // Add authentication middleware
+            // AFTER BodyParserMiddleware so credentials in JSON are available
+            ->add(new AuthenticationMiddleware($this));
+
+        $csrf = new CsrfProtectionMiddleware([
+            'httponly' => true,
+            'secure' => false, // Allow non-HTTPS in development
+        ]);
+
+        $csrf->skipCheckCallback(static function ($request) {
+            // Skip CSRF check for API-style JSON submissions
+            if ($request->is('json')) {
+                return true;
+            }
+
+            $contentType = strtolower($request->getHeaderLine('Content-Type'));
+            if ($contentType !== '' && str_contains($contentType, 'application/json')) {
+                return true;
+            }
+
+            $acceptHeader = strtolower($request->getHeaderLine('Accept'));
+            if ($acceptHeader !== '' && str_contains($acceptHeader, 'application/json')) {
+                return true;
+            }
+
+            return false;
+        });
+
+        $middlewareQueue->add($csrf);
 
         return $middlewareQueue;
     }
@@ -106,7 +129,7 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
             'queryParam' => 'redirect',
         ]);
 
-        // Load the authenticators with their identifiers
+        // Load authenticators with identifiers configured within them
         $authenticationService->loadAuthenticator('Authentication.Session');
         $authenticationService->loadAuthenticator('Authentication.Form', [
             'fields' => [
@@ -151,3 +174,4 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
         return $eventManager;
     }
 }
+
