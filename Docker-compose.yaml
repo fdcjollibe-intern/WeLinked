@@ -14,7 +14,7 @@ services:
             - welinked-network
         command: sh -c "nginx && tail -f /var/log/nginx/error.log"
 
-    # CakePHP 2.0 Backend - PHP-FPM Application Server
+    # CakePHP 5.3 Backend - PHP-FPM Application Server
     backend:
         build:
             context: ./

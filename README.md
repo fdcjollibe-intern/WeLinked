@@ -1,10 +1,10 @@
 # WeLinked
 
-A LinkedIn-style web application built with **CakePHP 2.0**, **Vue.js 3**, and **MySQL 8.0** using **MVC Architecture**.
+A LinkedIn-style web application built with **CakePHP 5.3**, **Vue.js 3**, and **MySQL 8.0** using **MVC Architecture**.
 
 ## 🚀 Tech Stack
 
-- **Backend**: CakePHP 2.0 (PHP 7.4)
+- **Backend**: CakePHP 5.3 (PHP 8.2+)
 - **Frontend**: Vue.js 3 (CDN)
 - **Database**: MySQL 8.0
 - **Web Server**: Nginx
@@ -15,33 +15,52 @@ A LinkedIn-style web application built with **CakePHP 2.0**, **Vue.js 3**, and *
 ```
 WeLinked/
 ├── Docker-compose.yaml          # Docker orchestration
-├── backend/                     # CakePHP application
-│   ├── app/
+├── backend/                     # CakePHP 5.x application
+│   ├── src/
 │   │   ├── Controller/          # Controllers (Business logic)
+│   │   │   ├── AppController.php
 │   │   │   ├── UsersController.php
+│   │   │   ├── LoginController.php
+│   │   │   ├── RegisterController.php
 │   │   │   └── PagesController.php
 │   │   ├── Model/               # Models (Database layer)
-│   │   │   └── User.php
-│   │   ├── View/                # Views (Frontend templates)
-│   │   │   ├── Users/
-│   │   │   │   ├── login.ctp    (Vue.js login page)
-│   │   │   │   └── dashboard.ctp (Vue.js dashboard)
-│   │   │   └── Layouts/
-│   │   │       ├── default.ctp  (Main layout with Vue CDN)
-│   │   │       └── error.ctp
-│   │   ├── Config/              # Configuration files
-│   │   │   ├── routes.php       (URL routing)
-│   │   │   └── database.php     (DB connection)
-│   │   └── webroot/             # Public assets (CSS, JS, images)
-│   └── lib/                     # CakePHP core library
+│   │   │   ├── Entity/          # Entity classes
+│   │   │   ├── Table/           # Table classes
+│   │   │   └── Behavior/        # Custom behaviors
+│   │   ├── View/                # View helpers and cells
+│   │   │   ├── AppView.php
+│   │   │   └── AjaxView.php
+│   │   ├── Application.php      # Application bootstrap
+│   │   └── Console/             # CLI commands
+│   ├── templates/               # View templates (Vue.js integration)
+│   │   ├── Login/
+│   │   │   └── index.php        # Vue.js login page
+│   │   ├── Register/
+│   │   │   └── index.php        # Vue.js register page
+│   │   ├── Users/
+│   │   │   └── dashboard.php    # Vue.js dashboard
+│   │   ├── layout/
+│   │   │   ├── default.php      # Main layout with Vue CDN
+│   │   │   ├── login.php        # Login layout
+│   │   │   └── error.php        # Error layout
+│   │   └── element/             # Reusable view elements
+│   ├── config/                  # Configuration files
+│   │   ├── app.php              # Main app config
+│   │   ├── routes.php           # URL routing
+│   │   └── bootstrap.php        # Bootstrap configuration
+│   ├── webroot/                 # Public assets (CSS, JS, images)
+│   │   ├── index.php            # Application entry point
+│   │   └── css/                 # Stylesheets
+│   ├── composer.json            # PHP dependencies
+│   └── logs/                    # Application logs
 ├── php/                         # PHP-FPM Docker configuration
-│   ├── Dockerfile               (PHP 7.4 with extensions)
-│   └── php.ini                  (PHP settings)
+│   ├── Dockerfile               # PHP 8.2-FPM with extensions
+│   └── php.ini                  # PHP settings
 ├── nginx/                       # Nginx configuration
 │   └── conf.d/
-│       └── default.conf         (Server config)
+│       └── default.conf         # Server config
 └── db/                          # Database setup
-    └── init-db.sql              (Initial schema & test data)
+    └── init-db.sql              # Initial schema & test data
 ```
 
 ## 🔧 Setup & Installation
@@ -76,40 +95,45 @@ open http://localhost/login
 
 ## 📍 Routes
 
-### Custom Routes (defined in `backend/app/Config/routes.php`)
+### Custom Routes (defined in `backend/config/routes.php`)
+- `/` → Login page (default)
 - `/login` → Login page
+- `/register` → Registration page
 - `/dashboard` → User dashboard
 - `/logout` → Logout
 
 ### Convention-based Routes (automatic)
-- `/users/login` → Same as `/login`
 - `/users/dashboard` → Same as `/dashboard`
-- `/users/logout` → Same as `/logout`
+- `/users/{action}` → UsersController actions
+- `/{controller}/{action}` → Standard CakePHP routing
 
 ## 🏗️ MVC Architecture
 
-### Model (`backend/app/Model/`)
-- Handles database operations
-- Validates data
-- Hashes passwords
+### Model (`backend/src/Model/`)
+- **Table classes**: Handle database operations, queries, and associations
+- **Entity classes**: Represent individual database records with validation
+- **Behaviors**: Reusable model functionality
+- Password hashing and data validation
 
-### View (`backend/app/View/`)
-- `.ctp` files (CakePHP Templates)
-- Vue.js injected via CDN
+### View (`backend/templates/`)
+- `.php` template files (CakePHP 5.x)
+- Vue.js 3 integrated via CDN
 - Reactive UI components
+- Layouts for consistent page structure
 
-### Controller (`backend/app/Controller/`)
-- Handles HTTP requests
+### Controller (`backend/src/Controller/`)
+- Handles HTTP requests and routing
 - Processes business logic
-- Returns JSON for Vue.js or renders views
+- Returns JSON for Vue.js AJAX or renders views
+- Authentication and authorization
 
 ## 🐳 Docker Services
 
 | Service | Container Name | Port | Description |
 |---------|----------------|------|-------------|
 | nginx | welinked-nginx-1 | 80, 443 | Web server & reverse proxy |
-| backend | welinked-backend | 9000 | PHP-FPM application server |
-| db | welinked-db | 3306 | MySQL database |
+| backend | welinked-backend | 9000 | PHP 8.2-FPM application server |
+| db | welinked-db | 3306 | MySQL 8.0 database |
 
 ## 🛠️ Common Commands
 
@@ -146,22 +170,30 @@ docker exec -it welinked-backend sh
 ## 📝 Development Notes
 
 ### Adding New Routes
-Edit `backend/app/Config/routes.php`:
+Edit `backend/config/routes.php` within the scope function:
 ```php
-Router::connect('/your-route', array(
-    'controller' => 'your_controller',
-    'action' => 'your_action'
-));
+$builder->connect('/your-route', [
+    'controller' => 'YourController',
+    'action' => 'yourAction'
+]);
 ```
 
 ### Creating New MVC Components
 
-**Model**: `backend/app/Model/YourModel.php`
-**Controller**: `backend/app/Controller/YourController.php`
-**View**: `backend/app/View/YourController/action.ctp`
+**Table (Model)**: `backend/src/Model/Table/YourModelTable.php`
+**Entity**: `backend/src/Model/Entity/YourModel.php`
+**Controller**: `backend/src/Controller/YourController.php`
+**View Template**: `backend/templates/YourController/action.php`
 
 ### Vue.js Integration
-Vue 3 is loaded via CDN in `backend/app/View/Layouts/default.ctp`. Each view can create a Vue app instance.
+Vue 3 is loaded via CDN in `backend/templates/layout/default.php`. Each view template can create a Vue app instance using the Composition API or Options API.
+
+### CakePHP 5.x Key Features
+- Modern PHP 8.2+ features (typed properties, attributes)
+- PSR-7 HTTP message implementation
+- Improved authentication with CakePHP Authentication plugin
+- Better dependency injection and service containers
+- Enhanced migration system
 
 ## 📦 Database Schema
 
@@ -175,6 +207,8 @@ See `db/init-db.sql` for the current schema. The `users` table is created automa
 
 ## 📚 Resources
 
-- [CakePHP 2.x Documentation](https://book.cakephp.org/2.0/en/index.html)
+- [CakePHP 5.x Documentation](https://book.cakephp.org/5/en/index.html)
+- [CakePHP Authentication Plugin](https://book.cakephp.org/authentication/3/en/index.html)
 - [Vue.js 3 Documentation](https://vuejs.org/)
 - [MySQL 8.0 Reference](https://dev.mysql.com/doc/refman/8.0/en/)
+- [PHP 8.2 Documentation](https://www.php.net/releases/8.2/en.php)
