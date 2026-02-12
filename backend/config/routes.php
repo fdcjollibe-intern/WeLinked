@@ -22,7 +22,28 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/forgot-password/reset', ['controller' => 'Passwords', 'action' => 'reset']);
         
         $builder->connect('/logout', ['controller' => 'Login', 'action' => 'logout']);
-        $builder->connect('/dashboard', ['controller' => 'Users', 'action' => 'dashboard']);
+        $builder->connect('/dashboard', ['controller' => 'Dashboard', 'action' => 'index']);
+
+        // Component endpoints used by the Dashboard to fetch HTML fragments
+        $builder->connect('/dashboard/left-sidebar', ['controller' => 'DashboardLeftSidebar', 'action' => 'index']);
+        $builder->connect('/dashboard/middle-column', ['controller' => 'DashboardMiddleColumn', 'action' => 'index']);
+        $builder->connect('/dashboard/right-sidebar', ['controller' => 'DashboardRightSidebar', 'action' => 'index']);
+
+        // Backwards-compatible short paths (redirect to dashboard-prefixed)
+        $builder->redirect('/left-sidebar', '/dashboard/left-sidebar', ['status' => 301]);
+        $builder->redirect('/middle-column', '/dashboard/middle-column', ['status' => 301]);
+        $builder->redirect('/right-sidebar', '/dashboard/right-sidebar', ['status' => 301]);
+
+        // Upload endpoint for attachments (POST). Query param `type` = post|comment
+        $builder->connect('/dashboard/upload', ['controller' => 'DashboardUploads', 'action' => 'upload']);
+        // Posts API
+        $builder->connect('/dashboard/posts/create', ['controller' => 'DashboardPosts', 'action' => 'create']);
+        // Reactions API (toggle/add/remove)
+        $builder->connect('/dashboard/posts/react', ['controller' => 'DashboardReactions', 'action' => 'react']);
+
+        // Backwards-compatible redirects for API paths
+        $builder->redirect('/api/upload', '/dashboard/upload', ['status' => 301]);
+        $builder->redirect('/api/posts/create', '/dashboard/posts/create', ['status' => 301]);
 
 
 

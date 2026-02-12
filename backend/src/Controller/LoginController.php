@@ -29,7 +29,7 @@ class LoginController extends AppController
         
         // If user is already logged in via GET, redirect to dashboard
         if ($result && $result->isValid() && !$this->request->is('post')) {
-            return $this->redirect(['controller' => 'Users', 'action' => 'dashboard']);
+            return $this->redirect(['controller' => 'Dashboard', 'action' => 'index']);
         }
         
         // Detect mobile/tablet devices
@@ -192,7 +192,7 @@ class LoginController extends AppController
                                             ->withStringBody(json_encode([
                                                 'success' => true,
                                                 'message' => 'Login successful',
-                                                'redirect' => '/users/dashboard'
+                                                'redirect' => '/dashboard'
                                             ]));
                                 } else {
                                     error_log('Manual fallback password verify failed for: ' . $username);
@@ -247,7 +247,7 @@ class LoginController extends AppController
                         ->withStringBody(json_encode([
                             'success' => true,
                             'message' => 'Login successful',
-                            'redirect' => '/users/dashboard'
+                            'redirect' => '/dashboard'
                         ]));
                 }
                 
@@ -282,8 +282,8 @@ class LoginController extends AppController
                 
                 if ($result && $result->isValid()) {
                     $redirect = $this->request->getQuery('redirect', [
-                        'controller' => 'Users',
-                        'action' => 'dashboard',
+                        'controller' => 'Dashboard',
+                        'action' => 'index',
                     ]);
                     return $this->redirect($redirect);
                 }

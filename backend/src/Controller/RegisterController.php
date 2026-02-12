@@ -29,7 +29,7 @@ class RegisterController extends AppController
         // If user is already logged in, redirect to dashboard
         $result = $this->Authentication->getResult();
         if ($result && $result->isValid()) {
-            return $this->redirect(['controller' => 'Users', 'action' => 'dashboard']);
+            return $this->redirect(['controller' => 'Dashboard', 'action' => 'index']);
         }
         
         // Detect mobile/tablet devices
@@ -107,7 +107,7 @@ class RegisterController extends AppController
                     $body = json_encode([
                         'success' => true,
                         'message' => 'Registration successful',
-                        'redirect' => '/users/dashboard'
+                        'redirect' => '/dashboard'
                     ]);
                     error_log('=== REGISTER REQUEST END (SUCCESS) ===');
                     return $this->response

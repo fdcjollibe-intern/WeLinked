@@ -1,0 +1,55 @@
+/* Dashboard common styles — Facebook-inspired layout */
+html,body{height:100%;margin:0}
+.prose-img{max-width:100%;height:auto}
+.post-gallery{position:relative}
+.post-gallery img{max-width:100%;display:block}
+
+/* Facebook-style layout adjustments */
+@media (min-width: 768px) {
+  #left-component, #right-component {
+    z-index: 40;
+    /* Remove scrollbar styling for cleaner look */
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+  }
+  
+  #left-component::-webkit-scrollbar,
+  #right-component::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  #left-component::-webkit-scrollbar-track,
+  #right-component::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  #left-component::-webkit-scrollbar-thumb,
+  #right-component::-webkit-scrollbar-thumb {
+    background-color: #e5e7eb;
+    border-radius: 3px;
+  }
+  
+  #left-component::-webkit-scrollbar-thumb:hover,
+  #right-component::-webkit-scrollbar-thumb:hover {
+    background-color: #d1d5db;
+  }
+}
+
+/* Stories horizontal scroll */
+.stories-container {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.stories-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Post interactions */
+.reaction-btn:hover {
+  color: #1e40af;
+}
+
+.comment-btn:hover {
+  color: #059669;
+}
