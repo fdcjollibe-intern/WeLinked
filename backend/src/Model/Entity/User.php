@@ -74,6 +74,15 @@ class User extends Entity
 
     protected function _getPassword(): ?string
     {
-        return $this->_properties['password'] ?? null;
+        // Safely check internal properties array (may be null in some contexts)
+        if (is_array($this->_properties) && array_key_exists('password', $this->_properties) && $this->_properties['password'] !== null) {
+            return $this->_properties['password'];
+        }
+
+        if (is_array($this->_properties) && array_key_exists('password_hash', $this->_properties)) {
+            return $this->_properties['password_hash'];
+        }
+
+        return null;
     }
 }

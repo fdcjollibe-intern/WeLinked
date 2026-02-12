@@ -16,7 +16,7 @@ class LoginController extends AppController
         parent::beforeFilter($event);
         
         // Allow login action without authentication
-        $this->Authentication->addUnauthenticatedActions(['index']);
+        $this->Authentication->addUnauthenticatedActions(['index', 'forgot', 'verify', 'reset']);
     }
 
     /**
@@ -102,7 +102,7 @@ class LoginController extends AppController
                     $usersTable = $this->fetchTable('Users');
                     $manual = $usersTable->find()
                         ->where(['username' => $username])
-                        ->select(['id', 'username', 'email', 'password'])
+                        ->select(['id', 'username', 'email', 'password_hash', 'password'])
                         ->first();
                     error_log('Manual user lookup result: ' . ($manual ? json_encode($manual->toArray()) : 'NOT FOUND'));
                     
@@ -110,16 +110,16 @@ class LoginController extends AppController
                     try {
                         $manualRaw = $usersTable->find()
                             ->where(['username' => $username])
-                            ->select(['id', 'username', 'email', 'password'])
+                            ->select(['id', 'username', 'email', 'password_hash', 'password'])
                             ->enableHydration(false)
                             ->first();
-                        error_log('Manual raw lookup result: ' . ($manualRaw ? json_encode($manualRaw) : 'NOT FOUND'));
+                            error_log('Manual raw lookup result: ' . ($manualRaw ? json_encode($manualRaw) : 'NOT FOUND'));
                     } catch (\Throwable $e) {
                         error_log('Manual raw lookup failed: ' . $e->getMessage());
                     }
                     if ($manual) {
                         try {
-                            $stored = $manual->get('password') ?? null;
+                            $stored = $manual->get('password_hash') ?: $manual->get('password');
                             error_log('Manual stored password present: ' . ($stored ? 'YES' : 'NO'));
                             if (!empty($stored)) {
                                 $checkHasher = new \Authentication\PasswordHasher\DefaultPasswordHasher([
@@ -145,15 +145,16 @@ class LoginController extends AppController
                             $usersTable = $this->fetchTable('Users');
                             $row = $usersTable->find()
                                 ->where(['username' => $username])
-                                ->select(['id', 'username', 'email', 'password'])
+                                ->select(['id', 'username', 'email', 'password_hash', 'password'])
                                 ->enableHydration(false)
                                 ->first();
 
-                            if ($row && !empty($row['password'])) {
+                            $storedRowHash = $row['password_hash'] ?? $row['password'] ?? null;
+                            if ($row && !empty($storedRowHash)) {
                                 $hasher = new \Authentication\PasswordHasher\DefaultPasswordHasher([
                                     'hashType' => PASSWORD_ARGON2ID,
                                 ]);
-                                if ($hasher->check($password, $row['password'])) {
+                                if ($hasher->check($password, $storedRowHash)) {
                                     // Build minimal identity and set it so the rest of the flow proceeds
                                     $identity = [
                                         'id' => $row['id'],
@@ -167,7 +168,7 @@ class LoginController extends AppController
                                         try {
                                             $identityObj = $this->Authentication->getIdentity();
                                             // Rehash if needed
-                                            $storedHash = $row['password'] ?? null;
+                                            $storedHash = $row['password_hash'] ?? $row['password'] ?? null;
                                             if (!empty($storedHash)) {
                                                 $rehashHasher = new \Authentication\PasswordHasher\DefaultPasswordHasher([
                                                     'hashType' => PASSWORD_ARGON2ID,
@@ -337,5 +338,32 @@ class LoginController extends AppController
         }
         
         return $this->redirect(['controller' => 'Login', 'action' => 'index']);
+    }
+
+    /**
+     * Forgot password - shows form to request reset (client-side only)
+     */
+    public function forgot()
+    {
+        $this->request->allowMethod(['get', 'post']);
+        $this->viewBuilder()->setLayout('login');
+    }
+
+    /**
+     * Verify OTP (client-side only)
+     */
+    public function verify()
+    {
+        $this->request->allowMethod(['get', 'post']);
+        $this->viewBuilder()->setLayout('login');
+    }
+
+    /**
+     * Reset password form (client-side only)
+     */
+    public function reset()
+    {
+        $this->request->allowMethod(['get', 'post']);
+        $this->viewBuilder()->setLayout('login');
     }
 }

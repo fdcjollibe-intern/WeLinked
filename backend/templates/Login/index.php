@@ -41,7 +41,7 @@
                     <div class="login-page">
                         <div class="form-flipper">
                     <!-- Login Form -->
-                    <div v-if="!isRegister" class="login-content flip-in" :key="'login'">
+                    <div v-if="!isRegister && !isForgot" class="login-content flip-in" :key="'login'">
                         <div class="form-header" :style="{ '--brand-gap': brandGap }">
                             <picture>
                                 <source srcset="/assets/logo.avif" type="image/avif">
@@ -95,10 +95,55 @@
                         <p class="register-link">
                             Don't have an account? <a href="#" @click.prevent="toggleForm">Sign up</a>
                         </p>
+                        <p class="forgot-link">
+                        </p>
+                    </div>
+
+                    <!-- Forgot Password Form -->
+                    <div v-else-if="isForgot" class="login-content flip-in" :key="'forgot'">
+                        <div class="form-header" :style="{ '--brand-gap': brandGap }">
+                            <picture>
+                                <source srcset="/assets/logo.avif" type="image/avif">
+                                <img src="/assets/logo.png" alt="eLinked logo" />
+                            </picture>
+                            <div class="brand-name header-name">eLinked</div>
+                        </div>
+                        <h1>Forgot Password</h1>
+                        <p class="subtitle">Don’t worry, happens to all of us. Enter your email below to recover your password</p>
+
+                        <div v-if="alert.show" :class="['alert', alert.type]">
+                            {{ alert.message }}
+                        </div>
+
+                        <form @submit.prevent="handleForgot" class="login-form">
+                            <div class="form-group">
+                                <label for="fp-email">Email</label>
+                                <input
+                                    type="email"
+                                    id="fp-email"
+                                    v-model="forgotEmail"
+                                    placeholder="you@example.com"
+                                    required
+                                    :disabled="loading"
+                                />
+                            </div>
+
+                            <button type="submit" class="btn-submit" :disabled="loading">
+                                <span v-if="!loading">Send verification code</span>
+                                <span v-else>Sending...</span>
+                            </button>
+                            </form>
+
+                            <p class="register-link">
+                                Remembered your password? <a href="/login">Sign in</a>
+                            </p>
+                            <p class="register-link">
+                                Don't have an account? <a href="/register">Sign up</a>
+                            </p>
                     </div>
 
                     <!-- Register Form -->
-                    <div v-else class="login-content flip-in" :key="'register'">
+                    <div v-else-if="isRegister" class="login-content flip-in" :key="'register'">
                         <div class="form-header" :style="{ '--brand-gap': brandGap }">
                             <picture>
                                 <source srcset="/assets/logo.avif" type="image/avif">
@@ -189,20 +234,69 @@
                             Already have an account? <a href="#" @click.prevent="toggleForm">Sign in</a>
                         </p>
                     </div>
+                    
+                    <!-- Verify Code (inline) -->
+                    <div v-else-if="isVerify" class="login-content flip-in" :key="'verify'">
+                        <div class="form-header" :style="{ '--brand-gap': brandGap }">
+                            <picture>
+                                <source srcset="/assets/logo.avif" type="image/avif">
+                                <img src="/assets/logo.png" alt="eLinked logo" />
+                            </picture>
+                            <div class="brand-name header-name">eLinked</div>
+                        </div>
+
+                        <h1 style="text-align:center;margin-bottom:8px;">Verify Code</h1>
+                        <p class="subtitle">Enter the 6-digit code sent to your email</p>
+
+                        <div id="otp-inline" style="display:flex;gap:10px;justify-content:center;margin:18px 0 8px 0;">
+                            <input class="otp-box-inline" maxlength="1" inputmode="numeric" pattern="[0-9]*" />
+                            <input class="otp-box-inline" maxlength="1" inputmode="numeric" pattern="[0-9]*" />
+                            <input class="otp-box-inline" maxlength="1" inputmode="numeric" pattern="[0-9]*" />
+                            <input class="otp-box-inline" maxlength="1" inputmode="numeric" pattern="[0-9]*" />
+                            <input class="otp-box-inline" maxlength="1" inputmode="numeric" pattern="[0-9]*" />
+                            <input class="otp-box-inline" maxlength="1" inputmode="numeric" pattern="[0-9]*" />
+                        </div>
+
+                        <div style="text-align:center;margin-top:8px;">
+                            <button class="btn-submit" @click.prevent="handleVerify">Proceed</button>
+                        </div>
+
+                        <p class="register-link" style="text-align:center;margin-top:12px;">Didn't receive a code? <a href="#" @click.prevent="toggleForgot">Resend</a></p>
+                    </div>
+
+                    <!-- Reset password (inline) -->
+                    <div v-else-if="isReset" class="login-content flip-in" :key="'reset'">
+                        <div class="form-header" :style="{ '--brand-gap': brandGap }">
+                            <picture>
+                                <source srcset="/assets/logo.avif" type="image/avif">
+                                <img src="/assets/logo.png" alt="eLinked logo" />
+                            </picture>
+                            <div class="brand-name header-name">eLinked</div>
+                        </div>
+
+                        <h1 style="text-align:center;margin-bottom:8px;">Create New Password</h1>
+                        <p class="subtitle">Choose a secure password for your account</p>
+
+                        <form @submit.prevent="handleResetInline" class="login-form">
+                            <div class="form-group">
+                                <label for="new-pass-inline">New password</label>
+                                <input id="new-pass-inline" type="password" v-model="resetPass" placeholder="New password" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-pass-inline">Confirm password</label>
+                                <input id="confirm-pass-inline" type="password" v-model="resetConfirm" placeholder="Confirm password" required />
+                            </div>
+
+                            <button type="submit" class="btn-submit">Set password</button>
+                        </form>
+
+                        <p style="text-align:center;margin-top:12px;">Remembered? <a href="#" @click.prevent="toggleForgot">Sign in</a></p>
+                    </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="right-col" aria-hidden="true">
-                     <div class="login-image">
-                        <div class="image-placeholder"></div>
-                        <div class="carousel-dots">
-                            <span class="dot active"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                </div>
+                <!-- right column removed: single-column centered form -->
             </div>
         </div>
     </div>
@@ -300,18 +394,18 @@ html, body {
 }
 
 .login-book {
-    display: flex;
+    display: block;
     width: 100%;
-    max-width: 1200px;
+    max-width: 760px;
     /* animate vertical growth between login and register */
     max-height: 560px;
     background: white;
-    border-radius: 28px;
+    border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 18px 50px rgba(10, 20, 40, 0.12);
+    box-shadow: 0 12px 36px rgba(10, 20, 40, 0.10);
     margin-left: auto;
     margin-right: auto;
-    padding: 28px;
+    padding: 36px 40px;
     transition: max-height 800ms cubic-bezier(.2,.9,.3,1), padding 600ms cubic-bezier(.2,.9,.3,1);
     will-change: max-height, padding, transform;
 }
@@ -327,18 +421,18 @@ html, body {
 }
 
 .login-inner {
-    display: flex;
+    display: block;
     width: 100%;
-    gap: 40px;
-    align-items: stretch;
 }
 
 .left-col {
-    flex: 0 0 48%;
+    width: 100%;
+    max-width: 540px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding: 18px 28px;
+    padding: 6px 8px;
 }
 
 /* top logo removed; form header contains logo and brand */
@@ -369,19 +463,8 @@ html, body {
 
 
 
-.right-col {
-    flex: 0 0 52%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 18px 28px;
-}
-
 .login-page {
-    flex: 1 1 auto;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
+    display: block;
     padding: 6px 0 0 0;
 }
 
@@ -400,41 +483,7 @@ html, body {
     padding: 4px 0;
 }
 
-.login-image {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.image-placeholder {
-    width: 92%;
-    height: 88%;
-    background: #e6e6e6;
-    border-radius: 16px;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-}
-
-.carousel-dots {
-    position: absolute;
-    bottom: 44px;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-}
-
-.carousel-dots .dot {
-    width: 10px;
-    height: 6px;
-    border-radius: 6px;
-    background: rgba(255,255,255,0.6);
-    display: inline-block;
-}
-
-.carousel-dots .dot.active { background: #3b82f6; box-shadow: 0 2px 6px rgba(59,130,246,0.18); }
+.login-image { display: none; }
 
 .image-overlay {
     text-align: center;
@@ -562,7 +611,6 @@ input:disabled {
     font-size: 14px;
     color: #718096;
 }
-
 .register-link a {
     color: #4299e1;
     text-decoration: none;
@@ -570,6 +618,25 @@ input:disabled {
 }
 
 .register-link a:hover {
+    color: #3182ce;
+    text-decoration: underline;
+}
+
+/* Style forgot password to match register link */
+.forgot-link {
+    text-align: center;
+    font-size: 14px;
+    color: #718096;
+    margin-top: 8px;
+}
+
+.forgot-link a {
+    color: #4299e1;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.forgot-link a:hover {
     color: #3182ce;
     text-decoration: underline;
 }
@@ -627,7 +694,9 @@ createApp({
         return {
             appTitle: 'WeLinked',
             isRegister: false,
-            brandGap: '2px',
+            isForgot: false,
+            brandGap: '0px',
+            forgotEmail: '',
             csrfToken: '<?= $this->request->getAttribute('csrfToken') ?>',
             credentials: {
                 username: '',
@@ -649,12 +718,44 @@ createApp({
         }
     },
     methods: {
-        toggleForm() {
+        toggleForgot() {
+            this.isForgot = !this.isForgot;
+            if (this.isForgot) {
+                this.isRegister = false;
+            }
+            this.clearAlert();
+            // reset form data
+            this.forgotEmail = '';
+        },
+        async handleForgot() {
+            if (!this.forgotEmail || !this.forgotEmail.includes('@')) {
+                this.showAlert('Please enter a valid email', 'error');
+                return;
+            }
+
+            this.loading = true;
+            this.clearAlert();
+            try {
+                // Simulate async send
+                await new Promise(res => setTimeout(res, 800));
+                this.showAlert('Verification code sent. Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = "<?= $this->Url->build(['controller' => 'Passwords', 'action' => 'verify']) ?>";
+                }, 700);
+            } catch (e) {
+                this.showAlert('Unable to send code. Try again.', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+            toggleForm() {
             this.isRegister = !this.isRegister;
             this.clearAlert();
             // Clear form data when switching
             this.credentials = { username: '', password: '' };
             this.registerData = { full_name: '', username: '', password: '', confirmPassword: '' };
+            // ensure other states off
+            this.isForgot = false;
         },
         async handleLogin() {
             this.loading = true;
@@ -839,6 +940,11 @@ createApp({
         // Check URL to see if we should show register form
         if (window.location.pathname === '/register') {
             this.isRegister = true;
+        }
+        if (window.location.pathname === '/forgot-password') {
+            // allow direct navigation to the /forgot-password route
+            // which is handled by `PasswordsController::forgot()` and its template
+            // we do not toggle inline UI here; let server-rendered route show the page
         }
     }
 }).mount('#loginApp');

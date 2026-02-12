@@ -14,9 +14,22 @@ return function (RouteBuilder $routes): void {
         
         $builder->connect('/', ['controller' => 'Login', 'action' => 'index']);
         $builder->connect('/login', ['controller' => 'Login', 'action' => 'index']);
+
         $builder->connect('/register', ['controller' => 'Register', 'action' => 'index']);
+        
+        $builder->connect('/forgot-password', ['controller' => 'Passwords', 'action' => 'forgot']);
+        $builder->connect('/forgot-password/verify', ['controller' => 'Passwords', 'action' => 'verify']);
+        $builder->connect('/forgot-password/reset', ['controller' => 'Passwords', 'action' => 'reset']);
+        
         $builder->connect('/logout', ['controller' => 'Login', 'action' => 'logout']);
         $builder->connect('/dashboard', ['controller' => 'Users', 'action' => 'dashboard']);
+
+
+
+
+
+
+        
 
 
         $builder->fallbacks();

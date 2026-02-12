@@ -140,8 +140,10 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
             'identifier' => [
                 'className' => 'Authentication.Password',
                 'fields' => [
+                    // Map the identifier's password field to the DB column `password_hash`
+                    // so the ORM resolver selects the correct column.
                     'username' => 'username',
-                    'password' => 'password',
+                    'password' => 'password_hash',
                 ],
                 'resolver' => [
                     'className' => 'Authentication.Orm',
