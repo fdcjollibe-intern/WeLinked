@@ -63,10 +63,10 @@ class UsersTable extends Table
             ->add('email', 'unique', ['rule' => 'validateUnique', 'provider' => 'table']);
 
         $validator
-            ->scalar('password')
-            ->maxLength('password', 255)
-            ->requirePresence('password', 'create')
-            ->notEmptyString('password');
+            ->scalar('password_hash')
+            ->maxLength('password_hash', 255)
+            ->requirePresence('password_hash', 'create')
+            ->notEmptyString('password_hash');
 
         return $validator;
     }

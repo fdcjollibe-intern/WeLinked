@@ -48,6 +48,20 @@ class LoginController extends AppController
             $username = $this->request->getData('username');
             $password = $this->request->getData('password');
             
+            // Quick existence check (used for user-friendly messages)
+            $userExists = false;
+            try {
+                $usersTable = $this->fetchTable('Users');
+                $exists = $usersTable->find()
+                    ->where(['username' => $username])
+                    ->select(['id'])
+                    ->enableHydration(false)
+                    ->first();
+                $userExists = (bool)$exists;
+            } catch (\Throwable $e) {
+                error_log('User existence check failed: ' . $e->getMessage());
+            }
+
             // Log incoming request
             error_log('=== LOGIN REQUEST START ===');
             error_log('Request Method: ' . $this->request->getMethod());
@@ -59,6 +73,9 @@ class LoginController extends AppController
             error_log('Username received: ' . var_export($username, true));
             error_log('Password length: ' . strlen($password ?? ''));
             
+            
+
+
             // Check if it's JSON request from Vue.js
             if ($isJsonRequest) {
                 $this->viewBuilder()->disableAutoLayout();
@@ -234,7 +251,7 @@ class LoginController extends AppController
                 }
                 
                 // Get more specific error message
-                $errorMessage = 'Invalid username or password';
+                $errorMessage = !$userExists ? 'Account does not exist' : 'Invalid username or password';
                 if (!empty($errors)) {
                     $errorMessage = implode(', ', $errors);
                 }
@@ -270,7 +287,12 @@ class LoginController extends AppController
                     return $this->redirect($redirect);
                 }
                 
-                $this->Flash->error(__('Invalid username or password'));
+                // Show account-existence specific message for form logins too
+                if (!$userExists) {
+                    $this->Flash->error(__('Account does not exist'));
+                } else {
+                    $this->Flash->error(__('Invalid username or password'));
+                }
             }
         }
         

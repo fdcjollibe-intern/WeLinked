@@ -1,14 +1,54 @@
+<!-- Soft animated SVG background (inspired by webroot/assets/mainbg.avif) -->
+<svg class="bg-svg" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+        <filter id="softBlur">
+            <feGaussianBlur stdDeviation="80" result="blur" />
+        </filter>
+
+        <radialGradient id="g1" cx="30%" cy="20%" r="60%">
+            <stop offset="0%" stop-color="#bfe9ff" stop-opacity="1" />
+            <stop offset="60%" stop-color="#7fc2ff" stop-opacity="0.95" />
+            <stop offset="100%" stop-color="#4da9ffa3" stop-opacity="0.9" />
+        </radialGradient>
+
+        <radialGradient id="g2" cx="20%" cy="30%" r="60%">
+            <stop offset="0%" stop-color="#ffe8ff" stop-opacity="1" />
+            <stop offset="60%" stop-color="#d7a8ff" stop-opacity="0.95" />
+            <stop offset="100%" stop-color="#b570ffc0" stop-opacity="0.9" />
+        </radialGradient>
+
+        <radialGradient id="g3" cx="60%" cy="70%" r="70%">
+            <stop offset="0%" stop-color="#fff2ff2e" stop-opacity="1" />
+            <stop offset="60%" stop-color="#efd1ff8a" stop-opacity="0.98" />
+            <stop offset="100%" stop-color="#d9c3ff7e" stop-opacity="0.92" />
+        </radialGradient>
+    </defs>
+
+    <g filter="url(#softBlur)" style="mix-blend-mode:screen;">
+        <circle class="blob blob-1" cx="1100" cy="180" r="380" fill="url(#g1)" />
+        <circle class="blob blob-2" cx="300" cy="260" r="360" fill="url(#g2)" />
+        <circle class="blob blob-3" cx="820" cy="620" r="420" fill="url(#g3)" />
+    </g>
+</svg>
+
 <div id="loginApp">
     <div class="login-container">
-        <div class="login-book <?= isset($hideImage) && $hideImage ? 'mobile-view' : '' ?>">
-            <!-- Left Column removed: only right-side form remains -->
+        <div class="login-book <?= isset($hideImage) && $hideImage ? 'mobile-view' : '' ?>" :class="{ 'is-register': isRegister }">
+            <div class="login-inner">
+                <div class="left-col">
 
-            <!-- Right Column - Form Flipper -->
-            <div class="login-page">
-                <div class="form-flipper">
+                    <!-- Form Flipper (Login / Register) -->
+                    <div class="login-page">
+                        <div class="form-flipper">
                     <!-- Login Form -->
                     <div v-if="!isRegister" class="login-content flip-in" :key="'login'">
-                        <h1>Login</h1>
+                        <div class="form-header" :style="{ '--brand-gap': brandGap }">
+                            <picture>
+                                <source srcset="/assets/logo.avif" type="image/avif">
+                                <img src="/assets/logo.png" alt="eLinked logo" />
+                            </picture>
+                            <div class="brand-name header-name">eLinked</div>
+                        </div>
                         <p class="subtitle">Sign in to your account</p>
 
                         <!-- Alert Messages -->
@@ -59,7 +99,13 @@
 
                     <!-- Register Form -->
                     <div v-else class="login-content flip-in" :key="'register'">
-                        <h1>Register</h1>
+                        <div class="form-header" :style="{ '--brand-gap': brandGap }">
+                            <picture>
+                                <source srcset="/assets/logo.avif" type="image/avif">
+                                <img src="/assets/logo.png" alt="eLinked logo" />
+                            </picture>
+                            <div class="brand-name header-name">eLinked</div>
+                        </div>
                         <p class="subtitle">Create your account</p>
 
                         <!-- Alert Messages -->
@@ -143,6 +189,19 @@
                             Already have an account? <a href="#" @click.prevent="toggleForm">Sign in</a>
                         </p>
                     </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="right-col" aria-hidden="true">
+                     <div class="login-image">
+                        <div class="image-placeholder"></div>
+                        <div class="carousel-dots">
+                            <span class="dot active"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -151,13 +210,69 @@
 
 <style>
                 
+/* Page background (covers whole viewport) */
+html, body {
+    height: 100%;
+    background-color: #dfe8ff; /* stronger soft fallback */
+    background-image: none; /* replaced by SVG background for consistency */
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/* SVG background styling */
+.bg-svg {
+    position: fixed;
+    inset: 0; /* top:0; right:0; bottom:0; left:0; */
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 1;
+}
+
+.bg-svg .blob {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+@keyframes floatA {
+    0% { transform: translate3d(0,0,0); }
+    50% { transform: translate3d(-18px,8px,0); }
+    100% { transform: translate3d(0,0,0); }
+}
+
+@keyframes floatB {
+    0% { transform: translate3d(0,0,0); }
+    50% { transform: translate3d(20px,-12px,0); }
+    100% { transform: translate3d(0,0,0); }
+}
+
+@keyframes floatC {
+    0% { transform: translate3d(0,0,0); }
+    50% { transform: translate3d(-10px,-6px,0); }
+    100% { transform: translate3d(0,0,0); }
+}
+
+.blob-1 { animation: floatA 18s ease-in-out infinite; }
+.blob-2 { animation: floatB 22s ease-in-out infinite; }
+.blob-3 { animation: floatC 26s ease-in-out infinite; }
+
+/* Ensure content sits above SVG */
+.login-container { position: relative; z-index: 2; }
+.login-book { z-index: 3; }
+
 @keyframes flipIn {
-    from {
-        transform: rotateY(90deg);
+    0% {
+        transform: rotateY(90deg) translateY(18px) scale(0.97);
         opacity: 0;
     }
-    to {
-        transform: rotateY(0deg);
+    60% {
+        transform: rotateY(-10deg) translateY(6px) scale(1.01);
+        opacity: 1;
+    }
+    100% {
+        transform: rotateY(0deg) translateY(0) scale(1);
         opacity: 1;
     }
 }
@@ -170,34 +285,40 @@
 }
 
 .flip-in {
-    animation: flipIn 0.6s ease-in-out;
+    animation: flipIn 0.8s cubic-bezier(.2,.9,.3,1) both;
     transform-style: preserve-3d;
+    will-change: transform, opacity;
 }
 
 .login-container {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
     min-height: 100vh;
-    padding: 20px;
-    background: #f7fafc;
+    padding: 40px 6%;
+    background: transparent;
 }
 
 .login-book {
     display: flex;
-    justify-content: flex-end;
     width: 100%;
-    max-width: 900px;
-    min-height: 420px;
+    max-width: 1200px;
+    /* animate vertical growth between login and register */
+    max-height: 560px;
     background: white;
-    border-radius: 12px;
+    border-radius: 28px;
     overflow: hidden;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 18px 50px rgba(10, 20, 40, 0.12);
+    margin-left: auto;
+    margin-right: auto;
+    padding: 28px;
+    transition: max-height 800ms cubic-bezier(.2,.9,.3,1), padding 600ms cubic-bezier(.2,.9,.3,1);
+    will-change: max-height, padding, transform;
 }
 
 .login-book.mobile-view {
     max-width: 500px;
-    min-height: auto;
+    max-height: 9999px;
 }
 
 .login-book.mobile-view .login-page {
@@ -205,37 +326,115 @@
     width: 100%;
 }
 
-.login-page {
-    flex: none;
-    width: 380px;
+.login-inner {
+    display: flex;
+    width: 100%;
+    gap: 40px;
+    align-items: stretch;
+}
+
+.left-col {
+    flex: 0 0 48%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 18px 28px;
+}
+
+/* top logo removed; form header contains logo and brand */
+
+.brand-name {
+    font-weight: 900;
+    font-size: 23px;
+    color: #111827;
+    letter-spacing: -0.3px;
+}
+
+.form-header {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
+    gap: var(--brand-gap, 16px);
+    margin-bottom: 12px;
+}
+
+.form-header img {
+    max-height: 64px;
+}
+
+.header-name {
+    font-size: 21px;
+    line-height: 1;
+}
+
+
+
+.right-col {
+    flex: 0 0 52%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 28px;
+}
+
+.login-page {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 6px 0 0 0;
+}
+
+/* When register form is active, allow the white card to expand */
+.login-book.is-register {
+    max-height: 880px;
+    padding: 36px;
 }
 
 .login-content {
     width: 100%;
-    max-width: 360px;
+    max-width: 420px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    padding: 8px 0;
+    justify-content: flex-start;
+    padding: 4px 0;
 }
 
 .login-image {
-    flex: 1;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    background-image: 
-        linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%),
-        url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80');
-    background-size: cover;
-    background-position: center;
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
 }
+
+.image-placeholder {
+    width: 92%;
+    height: 88%;
+    background: #e6e6e6;
+    border-radius: 16px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+.carousel-dots {
+    position: absolute;
+    bottom: 44px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.carousel-dots .dot {
+    width: 10px;
+    height: 6px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.6);
+    display: inline-block;
+}
+
+.carousel-dots .dot.active { background: #3b82f6; box-shadow: 0 2px 6px rgba(59,130,246,0.18); }
 
 .image-overlay {
     text-align: center;
@@ -260,7 +459,7 @@
 
 h1 {
     color: #1a202c;
-    font-size: 28px;
+    font-size: 26px;
     margin-bottom: 8px;
     text-align: center;
     font-weight: 600;
@@ -269,7 +468,7 @@ h1 {
 .subtitle {
     color: #718096;
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 18px;
     font-size: 14px;
 }
 
@@ -386,7 +585,9 @@ input:disabled {
     }
 
     .login-page {
-        padding: 40px 30px;
+        padding: 28px 22px;
+        justify-content: center;
+        width: 100%;
     }
 
     .image-overlay h2 {
@@ -426,6 +627,7 @@ createApp({
         return {
             appTitle: 'WeLinked',
             isRegister: false,
+            brandGap: '2px',
             csrfToken: '<?= $this->request->getAttribute('csrfToken') ?>',
             credentials: {
                 username: '',

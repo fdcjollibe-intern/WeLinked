@@ -154,7 +154,7 @@ docker-compose down
 docker-compose down -v
 
 # Access MySQL database
-docker exec -it welinked-db mysql -uwelinked -p'welinked@!password' welinked_db
+docker exec -it welinked-db mysql -uwelinked -p'welinked@password' welinked_db
 
 # Access backend container shell
 docker exec -it welinked-backend sh
@@ -203,7 +203,7 @@ See `db/init-db.sql` for the current schema. The `users` table is created automa
 
 - Passwords are hashed using PHP's `password_hash()`
 - Change default passwords in production
-- Update `welinked@!password` in `Docker-compose.yaml` for production
+- Update `welinked@password` in `Docker-compose.yaml` for production
 
 ## 📚 Resources
 

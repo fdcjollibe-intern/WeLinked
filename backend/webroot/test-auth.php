@@ -16,7 +16,7 @@ ConnectionManager::setConfig('default', [
     'persistent' => false,
     'host' => 'db',
     'username' => 'welinked',
-    'password' => 'welinked@!password',
+    'password' => 'welinked@password',
     'database' => 'welinked_db',
     'encoding' => 'utf8mb4',
     'timezone' => 'UTC',

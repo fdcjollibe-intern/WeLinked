@@ -28,7 +28,7 @@ services:
             - DB_PORT=3306
             - DB_NAME=welinked_db
             - DB_USER=welinked
-            - DB_PASSWORD=welinked@!password
+            - DB_PASSWORD=welinked@password
             - DEBUG=1
         command: sh -c "composer install --no-dev || true && touch /var/www/html/logs/error.log && php-fpm -D && tail -f /var/www/html/logs/error.log"
         depends_on:
@@ -48,10 +48,10 @@ services:
             - "3306:3306"
         restart: unless-stopped
         environment:  
-            MYSQL_ROOT_PASSWORD: welinked@!password
+            MYSQL_ROOT_PASSWORD: welinked@password
             MYSQL_DATABASE: welinked_db
             MYSQL_USER: welinked
-            MYSQL_PASSWORD: welinked@!password
+            MYSQL_PASSWORD: welinked@password
         networks:
             - welinked-network
 

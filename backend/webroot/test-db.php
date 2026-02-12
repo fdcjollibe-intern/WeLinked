@@ -3,7 +3,7 @@
 $host = 'db';
 $db = 'welinked_db';
 $user = 'welinked';
-$pass = 'welinked@!password';
+$pass = 'welinked@password';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);

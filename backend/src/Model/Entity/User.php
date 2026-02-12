@@ -30,6 +30,7 @@ class User extends Entity
         'username' => true,
         'email' => true,
         'password' => true,
+        'password_hash' => true,
         'profile_photo_path' => true,
         'created_at' => true,
         'updated_at' => true,
@@ -41,6 +42,8 @@ class User extends Entity
      * @var list<string>
      */
     protected array $_hidden = [
+        'password',
+        'password_hash',
     ];
 
     /**
@@ -55,12 +58,18 @@ class User extends Entity
 
         // If value already looks like a hash (bcrypt or argon), return it
         if (str_starts_with($password, '$2y$') || str_starts_with($password, '$argon')) {
+            // Ensure legacy hashed values are kept in both columns when possible
+            $this->set('password_hash', $password);
             return $password;
         }
 
-        return (new DefaultPasswordHasher([
+        $hash = (new DefaultPasswordHasher([
             'hashType' => PASSWORD_ARGON2ID,
         ]))->hash($password);
+
+        // Keep the hashed value in both `password` and `password_hash` properties
+        $this->set('password_hash', $hash);
+        return $hash;
     }
 
     protected function _getPassword(): ?string
