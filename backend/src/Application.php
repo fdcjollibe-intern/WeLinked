@@ -147,6 +147,13 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
                     'className' => 'Authentication.Orm',
                     'userModel' => 'Users',
                 ],
+                // Use Argon2id for password hashing during authentication only.
+                // This scopes the algorithm to the identifier and avoids global
+                // changes to vendor code. Existing hashes will still verify.
+                'passwordHasher' => [
+                    'className' => 'Authentication.Default',
+                    'hashType' => PASSWORD_ARGON2ID,
+                ],
             ],
         ]);
 

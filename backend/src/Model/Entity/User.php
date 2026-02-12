@@ -10,11 +10,13 @@ use Cake\ORM\Entity;
  * User Entity
  *
  * @property int $id
+ * @property string $full_name
  * @property string $username
  * @property string $email
  * @property string $password
- * @property \Cake\I18n\DateTime|null $created
- * @property \Cake\I18n\DateTime|null $modified
+ * @property string|null $profile_photo_path
+ * @property \Cake\I18n\DateTime|null $created_at
+ * @property \Cake\I18n\DateTime|null $updated_at
  */
 class User extends Entity
 {
@@ -24,11 +26,13 @@ class User extends Entity
      * @var array<string, bool>
      */
     protected array $_accessible = [
+        'full_name' => true,
         'username' => true,
         'email' => true,
         'password' => true,
-        'created' => true,
-        'modified' => true,
+        'profile_photo_path' => true,
+        'created_at' => true,
+        'updated_at' => true,
     ];
 
     /**
@@ -37,18 +41,30 @@ class User extends Entity
      * @var list<string>
      */
     protected array $_hidden = [
-        'password',
     ];
 
     /**
-     * Automatically hash passwords when they are changed.
+     * Automatically hash passwords when they are changed and store
+     * the hashed value in the `password` column.
      */
-    protected function _setPassword(string $password): ?string
+    protected function _setPassword(?string $password): ?string
     {
-        if (strlen($password) > 0) {
-            return (new DefaultPasswordHasher())->hash($password);
+        if ($password === null) {
+            return null;
         }
-        
-        return null;
+
+        // If value already looks like a hash (bcrypt or argon), return it
+        if (str_starts_with($password, '$2y$') || str_starts_with($password, '$argon')) {
+            return $password;
+        }
+
+        return (new DefaultPasswordHasher([
+            'hashType' => PASSWORD_ARGON2ID,
+        ]))->hash($password);
+    }
+
+    protected function _getPassword(): ?string
+    {
+        return $this->_properties['password'] ?? null;
     }
 }

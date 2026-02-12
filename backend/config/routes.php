@@ -18,10 +18,6 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/logout', ['controller' => 'Login', 'action' => 'logout']);
         $builder->connect('/dashboard', ['controller' => 'Users', 'action' => 'dashboard']);
 
-       
-
-        
-
 
         $builder->fallbacks();
     });

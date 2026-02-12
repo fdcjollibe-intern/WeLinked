@@ -59,8 +59,9 @@ class RegisterController extends AppController
 
                 $data = $this->request->getData();
 
-                // Validate confirm password
-                if (($data['password'] ?? '') !== ($data['confirmPassword'] ?? '')) {
+                // Validate confirm password and minimal length
+                $plainPassword = $data['password'] ?? '';
+                if ($plainPassword !== ($data['confirmPassword'] ?? '')) {
                     $body = json_encode([
                         'success' => false,
                         'message' => 'Passwords do not match'
@@ -71,12 +72,32 @@ class RegisterController extends AppController
                         ->withStringBody($body);
                 }
 
+                if (strlen($plainPassword) < 6) {
+                    $body = json_encode([
+                        'success' => false,
+                        'message' => 'Password must be at least 6 characters'
+                    ]);
+                    return $this->response
+                        ->withStatus(400)
+                        ->withType('application/json')
+                        ->withStringBody($body);
+                }
+
                 $usersTable = $this->fetchTable('Users');
                 $user = $usersTable->newEmptyEntity();
+                // Hash password here and store to password_hash column using Argon2id
+                $hasher = new \Authentication\PasswordHasher\DefaultPasswordHasher([
+                    'hashType' => PASSWORD_ARGON2ID,
+                ]);
+                $hashed = $hasher->hash($plainPassword);
+
                 $user = $usersTable->patchEntity($user, [
+                    'full_name' => $data['full_name'] ?? null,
                     'username' => $data['username'] ?? null,
-                    'email' => $data['email'] ?? null,
-                    'password' => $data['password'] ?? null
+                    'email' => $data['email'] ?? ($data['email'] ?? null),
+                    // Some DB schemas use `password` column; include both to be compatible
+                    'password' => $hashed,
+                    'password_hash' => $hashed,
                 ]);
 
                 if ($usersTable->save($user)) {
@@ -109,9 +130,7 @@ class RegisterController extends AppController
 
                     // Map generic unique constraint messages to friendlier text
                     if (is_array($fieldErrors) && array_key_exists('unique', $fieldErrors)) {
-                        if ($firstField === 'email') {
-                            $errorMessage = 'Email is already registered';
-                        } elseif ($firstField === 'username') {
+                        if ($firstField === 'username') {
                             $errorMessage = 'Username is already taken';
                         } else {
                             $errorMessage = $rawMsg;

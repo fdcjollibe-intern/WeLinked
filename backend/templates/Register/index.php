@@ -1,92 +1,83 @@
 <div id="registerApp">
     <div class="login-container">
         <div class="login-book <?= isset($hideImage) && $hideImage ? 'mobile-view' : '' ?>">
-            <!-- Left Column - Image -->
-            <?php if (!isset($hideImage) || !$hideImage): ?>
-            <div class="login-image">
-                <div class="image-overlay">
-                    <h2>Join WeLinked!</h2>
-                    <p>Create your account and start connecting with friends and the world around you.</p>
-                </div>
-            </div>
-            <?php endif; ?>
-
-            <!-- Right Column - Register Form with Flip Animation -->
+            <!-- Left Column removed: only right-side form remains -->
             <div class="login-page">
-                <div class="form-flipper">
-                    <div class="login-content flip-in">
-                        <h1>{{ appTitle }}</h1>
-                        <p class="subtitle">Create your account</p>
-
-                        <!-- Alert Messages -->
-                        <div v-if="alert.show" :class="['alert', alert.type]">
-                            {{ alert.message }}
+                <div class="login-content">
+                    <form class="register-form" @submit.prevent="handleRegister">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input
+                                type="text"
+                                id="username"
+                                v-model="credentials.username"
+                                placeholder="Choose a username"
+                                required
+                                :disabled="loading"
+                            />
                         </div>
 
-                        <!-- Register Form -->
-                        <form @submit.prevent="handleRegister" class="login-form">
-                            <div class="form-group">
-                                <label for="username">Username</label>
-                                <input 
-                                    type="text"
-                                    id="username"
-                                    v-model="credentials.username"
-                                    placeholder="Choose a username"
-                                    required
-                                    :disabled="loading"
-                                />
-                            </div>
-
-                            <div class="form-group">
-                                <label for="email">Email</label>
-                                <input 
-                                    type="email"
-                                    id="email"
-                                    v-model="credentials.email"
-                                    placeholder="Enter your email"
-                                    required
-                                    :disabled="loading"
-                                />
-                            </div>
-
-                            <div class="form-group">
-                                <label for="password">Password</label>
-                                <input 
-                                    type="password"
-                                    id="password"
-                                    v-model="credentials.password"
-                                    placeholder="Choose a password (min 6 characters)"
-                                    required
-                                    :disabled="loading"
-                                />
-                            </div>
-
-                            <div class="form-group">
-                                <label for="confirmPassword">Confirm Password</label>
-                                <input 
-                                    type="password"
-                                    id="confirmPassword"
-                                    v-model="credentials.confirmPassword"
-                                    placeholder="Confirm your password"
-                                    required
-                                    :disabled="loading"
-                                />
-                            </div>
-
-                            <button 
-                                type="submit" 
-                                class="btn-submit"
+                        <div class="form-group">
+                            <label for="full_name">Full name</label>
+                            <input
+                                type="text"
+                                id="full_name"
+                                v-model="credentials.full_name"
+                                placeholder="Your full name"
+                                required
                                 :disabled="loading"
-                            >
-                                <span v-if="!loading">Sign Up</span>
-                                <span v-else>Creating account...</span>
-                            </button>
-                        </form>
+                            />
+                        </div>
 
-                        <p class="register-link">
-                            Already have an account? <a href="/login">Sign in</a>
-                        </p>
-                    </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input
+                                type="email"
+                                id="email"
+                                v-model="credentials.email"
+                                placeholder="Enter your email"
+                                required
+                                :disabled="loading"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input
+                                type="password"
+                                id="password"
+                                v-model="credentials.password"
+                                placeholder="Choose a password (min 6 characters)"
+                                required
+                                :disabled="loading"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm Password</label>
+                            <input
+                                type="password"
+                                id="confirmPassword"
+                                v-model="credentials.confirmPassword"
+                                placeholder="Confirm your password"
+                                required
+                                :disabled="loading"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="btn-submit"
+                            :disabled="loading"
+                        >
+                            <span v-if="!loading">Sign Up</span>
+                            <span v-else>Creating account...</span>
+                        </button>
+                    </form>
+
+                    <p class="register-link">
+                        Already have an account? <a href="/login">Sign in</a>
+                    </p>
                 </div>
             </div>
         </div>
@@ -126,13 +117,14 @@
 
 .login-book {
     display: flex;
+    justify-content: flex-end;
     width: 100%;
-    max-width: 1100px;
-    min-height: 600px;
+    max-width: 900px;
+    min-height: 420px;
     background: white;
-    border-radius: 16px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
 }
 
 .login-book.mobile-view {
@@ -146,17 +138,19 @@
 }
 
 .login-page {
-    flex: 1;
+    flex: none;
+    width: 380px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 60px 40px;
+    padding: 40px 32px;
     background: #ffffff;
 }
 
 .login-content {
     width: 100%;
-    max-width: 420px;
+    max-width: 360px;
+    padding: 8px 0;
 }
 
 .login-image {
@@ -362,6 +356,7 @@ createApp({
         return {
             appTitle: 'WeLinked',
             credentials: {
+                full_name: '',
                 username: '',
                 email: '',
                 password: '',
@@ -398,9 +393,12 @@ createApp({
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-Token': '<?= $this->request->getAttribute('csrfToken') ?>'
                     },
                     body: JSON.stringify({
+                        full_name: this.credentials.full_name,
                         username: this.credentials.username,
                         email: this.credentials.email,
                         password: this.credentials.password,
@@ -408,7 +406,14 @@ createApp({
                     })
                 });
 
-                const data = await response.json();
+                const contentType = response.headers.get('content-type') || '';
+                let data = null;
+                if (contentType.toLowerCase().includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    try { data = JSON.parse(text); } catch (e) { data = { success: false, message: text }; }
+                }
 
                 if (data.success) {
                     this.showAlert('Registration successful! Redirecting...', 'success');

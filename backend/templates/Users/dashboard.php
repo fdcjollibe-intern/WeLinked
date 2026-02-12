@@ -17,10 +17,13 @@
                     <strong>Username:</strong> {{user.username }}
                 </div>
                 <div class="profile-item">
+                    <strong>Full name:</strong> {{ user.full_name }}
+                </div>
+                <div class="profile-item">
                     <strong>Email:</strong> {{ user.email }}
                 </div>
                 <div class="profile-item">
-                    <strong>Member since:</strong> {{ formatDate(user.created) }}
+                    <strong>Member since:</strong> {{ formatDate(user.created_at || user.created || user.createdAt) }}
                 </div>
             </div>
         </div>

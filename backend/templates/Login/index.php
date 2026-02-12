@@ -1,22 +1,14 @@
 <div id="loginApp">
     <div class="login-container">
         <div class="login-book <?= isset($hideImage) && $hideImage ? 'mobile-view' : '' ?>">
-            <!-- Left Column - Image -->
-            <?php if (!isset($hideImage) || !$hideImage): ?>
-            <div class="login-image">
-                <div class="image-overlay">
-                    <h2>{{ isRegister ? 'Join WeLinked!' : 'Welcome Back!' }}</h2>
-                    <p>{{ isRegister ? 'Create your account and start connecting with friends and the world around you.' : 'Connect with friends and the world around you on WeLinked.' }}</p>
-                </div>
-            </div>
-            <?php endif; ?>
+            <!-- Left Column removed: only right-side form remains -->
 
             <!-- Right Column - Form Flipper -->
             <div class="login-page">
                 <div class="form-flipper">
                     <!-- Login Form -->
                     <div v-if="!isRegister" class="login-content flip-in" :key="'login'">
-                        <h1>{{ appTitle }}</h1>
+                        <h1>Login</h1>
                         <p class="subtitle">Sign in to your account</p>
 
                         <!-- Alert Messages -->
@@ -67,7 +59,7 @@
 
                     <!-- Register Form -->
                     <div v-else class="login-content flip-in" :key="'register'">
-                        <h1>{{ appTitle }}</h1>
+                        <h1>Register</h1>
                         <p class="subtitle">Create your account</p>
 
                         <!-- Alert Messages -->
@@ -79,7 +71,7 @@
                         <form @submit.prevent="handleRegister" class="login-form">
                             <div class="form-group">
                                 <label for="reg-username">Username</label>
-                                <input 
+                                <input
                                     type="text"
                                     id="reg-username"
                                     v-model="registerData.username"
@@ -90,8 +82,20 @@
                             </div>
 
                             <div class="form-group">
+                                <label for="reg-fullname">Full name</label>
+                                <input
+                                    type="text"
+                                    id="reg-fullname"
+                                    v-model="registerData.full_name"
+                                    placeholder="Your full name"
+                                    required
+                                    :disabled="loading"
+                                />
+                            </div>
+
+                            <div class="form-group">
                                 <label for="reg-email">Email</label>
-                                <input 
+                                <input
                                     type="email"
                                     id="reg-email"
                                     v-model="registerData.email"
@@ -146,6 +150,7 @@
 </div>
 
 <style>
+                
 @keyframes flipIn {
     from {
         transform: rotateY(90deg);
@@ -180,13 +185,14 @@
 
 .login-book {
     display: flex;
+    justify-content: flex-end;
     width: 100%;
-    max-width: 1100px;
-    min-height: 600px;
+    max-width: 900px;
+    min-height: 420px;
     background: white;
-    border-radius: 16px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
 }
 
 .login-book.mobile-view {
@@ -200,21 +206,21 @@
 }
 
 .login-page {
-    flex: 1;
+    flex: none;
+    width: 380px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
-    background: #ffffff;
+    padding: 40px 20px;
 }
 
 .login-content {
     width: 100%;
-    max-width: 420px;
-    min-height: 620px;
+    max-width: 360px;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    padding: 8px 0;
 }
 
 .login-image {
@@ -426,6 +432,7 @@ createApp({
                 password: ''
             },
             registerData: {
+                full_name: '',
                 username: '',
                 email: '',
                 password: '',
@@ -445,7 +452,7 @@ createApp({
             this.clearAlert();
             // Clear form data when switching
             this.credentials = { username: '', password: '' };
-            this.registerData = { username: '', email: '', password: '', confirmPassword: '' };
+            this.registerData = { full_name: '', username: '', password: '', confirmPassword: '' };
         },
         async handleLogin() {
             this.loading = true;
@@ -568,6 +575,7 @@ createApp({
                         'X-CSRF-Token': this.csrfToken
                     },
                     body: JSON.stringify({
+                        full_name: this.registerData.full_name,
                         username: this.registerData.username,
                         email: this.registerData.email,
                         password: this.registerData.password,

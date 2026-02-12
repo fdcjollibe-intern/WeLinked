@@ -23,7 +23,14 @@ class UsersTable extends Table
         $this->setDisplayField('username');
         $this->setPrimaryKey('id');
 
-        $this->addBehavior('Timestamp');
+        $this->addBehavior('Timestamp', [
+            'events' => [
+                'Model.beforeSave' => [
+                    'created_at' => 'new',
+                    'updated_at' => 'always'
+                ]
+            ]
+        ]);
     }
 
     /**
@@ -36,6 +43,12 @@ class UsersTable extends Table
             ->allowEmptyString('id', null, 'create');
 
         $validator
+            ->scalar('full_name')
+            ->maxLength('full_name', 150)
+            ->requirePresence('full_name', 'create')
+            ->notEmptyString('full_name');
+
+        $validator
             ->scalar('username')
             ->maxLength('username', 50)
             ->requirePresence('username', 'create')
@@ -44,6 +57,7 @@ class UsersTable extends Table
 
         $validator
             ->email('email')
+            ->maxLength('email', 100)
             ->requirePresence('email', 'create')
             ->notEmptyString('email')
             ->add('email', 'unique', ['rule' => 'validateUnique', 'provider' => 'table']);
@@ -52,8 +66,7 @@ class UsersTable extends Table
             ->scalar('password')
             ->maxLength('password', 255)
             ->requirePresence('password', 'create')
-            ->notEmptyString('password')
-            ->minLength('password', 6, 'Password must be at least 6 characters');
+            ->notEmptyString('password');
 
         return $validator;
     }
