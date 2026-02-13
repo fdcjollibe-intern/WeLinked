@@ -9,6 +9,24 @@ return function (RouteBuilder $routes): void {
 
     $routes->scope('/', function (RouteBuilder $builder): void {
       
+        // Profile routes FIRST - must come before fallbacks to prevent controller/action matching
+        $builder->connect(
+            '/profile/:username/followers',
+            ['controller' => 'Profile', 'action' => 'followers', 'pass' => ['username']],
+            ['username' => '[a-zA-Z0-9_]+']
+        );
+        $builder->connect(
+            '/profile/:username/following',
+            ['controller' => 'Profile', 'action' => 'following', 'pass' => ['username']],
+            ['username' => '[a-zA-Z0-9_]+']
+        );
+        $builder->connect(
+            '/profile/:username',
+            ['controller' => 'Profile', 'action' => 'index', 'pass' => ['username']],
+            ['username' => '[a-zA-Z0-9_]+']
+        );
+        $builder->connect('/profile', ['controller' => 'Profile', 'action' => 'index']);
+        
         // Ignore .well-known paths to prevent routing errors
         $builder->connect('/.well-known/*', ['controller' => 'Error', 'action' => 'error404']);
         
@@ -23,6 +41,15 @@ return function (RouteBuilder $routes): void {
         
         $builder->connect('/logout', ['controller' => 'Login', 'action' => 'logout']);
         $builder->connect('/dashboard', ['controller' => 'Dashboard', 'action' => 'index']);
+        
+        // Settings
+        $builder->connect('/settings', ['controller' => 'Settings', 'action' => 'index']);
+        $builder->connect('/settings/update-account', ['controller' => 'Settings', 'action' => 'updateAccount']);
+        $builder->connect('/settings/update-password', ['controller' => 'Settings', 'action' => 'updatePassword']);
+        $builder->connect('/settings/update-theme', ['controller' => 'Settings', 'action' => 'updateTheme']);
+        $builder->connect('/settings/upload-profile-photo', ['controller' => 'Settings', 'action' => 'uploadProfilePhoto']);
+        $builder->connect('/settings/enable-two-factor', ['controller' => 'Settings', 'action' => 'enableTwoFactor']);
+        $builder->connect('/settings/disable-two-factor', ['controller' => 'Settings', 'action' => 'disableTwoFactor']);
 
         // Component endpoints used by the Dashboard to fetch HTML fragments
         $builder->connect('/dashboard/left-sidebar', ['controller' => 'DashboardLeftSidebar', 'action' => 'index']);
@@ -36,23 +63,44 @@ return function (RouteBuilder $routes): void {
 
         // Upload endpoint for attachments (POST). Query param `type` = post|comment
         $builder->connect('/dashboard/upload', ['controller' => 'DashboardUploads', 'action' => 'upload']);
-        // Posts API
+        $builder->connect('/dashboard/upload/delete', ['controller' => 'DashboardUploads', 'action' => 'delete']);
+        
+        // Posts API - CRUD operations
         $builder->connect('/dashboard/posts/create', ['controller' => 'DashboardPosts', 'action' => 'create']);
+        $builder->connect('/dashboard/posts/edit/:id', ['controller' => 'DashboardPosts', 'action' => 'edit'])
+            ->setPass(['id']);
+        $builder->connect('/dashboard/posts/delete/:id', ['controller' => 'DashboardPosts', 'action' => 'delete'])
+            ->setPass(['id']);
+        
         // Reactions API (toggle/add/remove)
         $builder->connect('/dashboard/posts/react', ['controller' => 'DashboardReactions', 'action' => 'react']);
+
+        // Mentions API - Autocomplete for @mentions
+        $builder->connect('/api/mentions/search', ['controller' => 'Mentions', 'action' => 'search']);
+        
+        // Notifications API
+        $builder->connect('/api/notifications', ['controller' => 'Notifications', 'action' => 'index']);
+        $builder->connect('/api/notifications/unread-count', ['controller' => 'Notifications', 'action' => 'unreadCount']);
+        $builder->connect('/api/notifications/mark-read/:id', ['controller' => 'Notifications', 'action' => 'markAsRead'])
+            ->setPass(['id']);
+        $builder->connect('/api/notifications/mark-all-read', ['controller' => 'Notifications', 'action' => 'markAllAsRead']);
+
+        // Friends API
+        $builder->connect('/friends', ['controller' => 'Friends', 'action' => 'index']);
+        $builder->connect('/api/friends/suggestions', ['controller' => 'Friends', 'action' => 'suggestions']);
+        $builder->connect('/api/friends/count', ['controller' => 'Friends', 'action' => 'count']);
+        $builder->connect('/friends/follow', ['controller' => 'Friends', 'action' => 'follow']);
+        $builder->connect('/friends/unfollow', ['controller' => 'Friends', 'action' => 'unfollow']);
+
+        // Search API
+        $builder->connect('/search', ['controller' => 'Search', 'action' => 'index']);
+        $builder->connect('/api/search/suggest', ['controller' => 'Search', 'action' => 'suggest']);
 
         // Backwards-compatible redirects for API paths
         $builder->redirect('/api/upload', '/dashboard/upload', ['status' => 301]);
         $builder->redirect('/api/posts/create', '/dashboard/posts/create', ['status' => 301]);
 
-
-
-
-
-
-        
-
-
+        // Enable fallbacks for any unmatched routes
         $builder->fallbacks();
     });
 

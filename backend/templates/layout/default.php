@@ -21,8 +21,17 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
 <head>
     <?= $this->Html->charset() ?>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>WeLinked - <?= $this->fetch('title', 'Social Network') ?></title>
-    <?= $this->Html->meta('icon') ?>
+    <?php
+    $pageTitle = $this->fetch('title');
+    $controller = strtolower($this->getRequest()->getParam('controller'));
+    if (empty($pageTitle) || $controller === 'dashboard' || strtolower($pageTitle) === 'dashboard') {
+        $fullTitle = 'WeLinked';
+    } else {
+        $fullTitle = 'WeLinked - ' . $pageTitle;
+    }
+    ?>
+    <title><?= h($fullTitle) ?></title>
+    <link rel="icon" href="/favicon.ico" />
 
         <!-- Tailwind CSS (CDN) -->
         <script src="https://cdn.tailwindcss.com"></script>
@@ -39,6 +48,9 @@ $cakeDescription = 'CakePHP: the rapid development php framework';
             .soft-input{background:#fff;border:1px solid #dbdbdb;transition:border 0.2s ease}
             .soft-input:focus{border-color:#a8a8a8;outline:none}
         </style>
+
+        <!-- Vue (global) -->
+        <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 
     <?= $this->fetch('meta') ?>
     <?= $this->fetch('css') ?>

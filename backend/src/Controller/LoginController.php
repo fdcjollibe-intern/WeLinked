@@ -281,10 +281,14 @@ class LoginController extends AppController
                 $result = $this->Authentication->getResult();
                 
                 if ($result && $result->isValid()) {
-                    $redirect = $this->request->getQuery('redirect', [
-                        'controller' => 'Dashboard',
-                        'action' => 'index',
-                    ]);
+                    $redirect = $this->request->getQuery('redirect');
+                    if (empty($redirect)) {
+                        // default to /dashboard
+                        $redirect = '/dashboard';
+                    } elseif (is_string($redirect) && strpos($redirect, '/users/dashboard') === 0) {
+                        // normalizing legacy/users route to canonical /dashboard
+                        $redirect = '/dashboard';
+                    }
                     return $this->redirect($redirect);
                 }
                 

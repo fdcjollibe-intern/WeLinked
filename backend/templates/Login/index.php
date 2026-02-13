@@ -47,7 +47,7 @@
                                 <source srcset="/assets/logo.avif" type="image/avif">
                                 <img src="/assets/logo.png" alt="eLinked logo" />
                             </picture>
-                            <div class="brand-name header-name">eLinked</div>
+                            <div class="brand-name header-name" style="margin-left: -4px;">eLinked</div>
                         </div>
                         <p class="subtitle">Sign in to your account</p>
 
@@ -106,7 +106,7 @@
                                 <source srcset="/assets/logo.avif" type="image/avif">
                                 <img src="/assets/logo.png" alt="eLinked logo" />
                             </picture>
-                            <div class="brand-name header-name">eLinked</div>
+                            <div class="brand-name header-name" style="margin-left: -4px;">eLinked</div>
                         </div>
                         <h1>Forgot Password</h1>
                         <p class="subtitle">Don’t worry, happens to all of us. Enter your email below to recover your password</p>
@@ -149,7 +149,7 @@
                                 <source srcset="/assets/logo.avif" type="image/avif">
                                 <img src="/assets/logo.png" alt="eLinked logo" />
                             </picture>
-                            <div class="brand-name header-name">eLinked</div>
+                            <div class="brand-name header-name" style="margin-left: -4px;">eLinked</div>
                         </div>
                         <p class="subtitle">Create your account</p>
 
@@ -242,7 +242,7 @@
                                 <source srcset="/assets/logo.avif" type="image/avif">
                                 <img src="/assets/logo.png" alt="eLinked logo" />
                             </picture>
-                            <div class="brand-name header-name">eLinked</div>
+                            <div class="brand-name header-name" style="margin-left: -4px;">eLinked</div>
                         </div>
 
                         <h1 style="text-align:center;margin-bottom:8px;">Verify Code</h1>
@@ -271,7 +271,7 @@
                                 <source srcset="/assets/logo.avif" type="image/avif">
                                 <img src="/assets/logo.png" alt="eLinked logo" />
                             </picture>
-                            <div class="brand-name header-name">eLinked</div>
+                            <div class="brand-name header-name" style="margin-left: -4px;">eLinked</div>
                         </div>
 
                         <h1 style="text-align:center;margin-bottom:8px;">Create New Password</h1>
@@ -819,7 +819,7 @@ createApp({
                     console.log('✓ Login successful!');
                     this.showAlert('Login successful! Redirecting...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/users/dashboard';
+                        window.location.href = '/dashboard';
                     }, 1000);
                     console.log('=== LOGIN ATTEMPT END ===');
                     return;
@@ -829,7 +829,7 @@ createApp({
                     console.warn('No JSON body, assuming success because HTTP status was OK.');
                     this.showAlert('Login successful! Redirecting...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/users/dashboard';
+                        window.location.href = '/dashboard';
                     }, 1000);
                     console.log('=== LOGIN ATTEMPT END ===');
                     return;
@@ -911,7 +911,7 @@ createApp({
                 if (data && data.success) {
                     this.showAlert('Registration successful! Redirecting...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/users/dashboard';
+                        window.location.href = '/dashboard';
                     }, 1000);
                 } else {
                     this.showAlert((data && data.message) || 'Registration failed', 'error');

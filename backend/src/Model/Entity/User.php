@@ -15,6 +15,7 @@ use Cake\ORM\Entity;
  * @property string $email
  * @property string $password
  * @property string|null $profile_photo_path
+ * @property string $theme_preference
  * @property \Cake\I18n\DateTime|null $created_at
  * @property \Cake\I18n\DateTime|null $updated_at
  */
@@ -32,6 +33,7 @@ class User extends Entity
         'password' => true,
         'password_hash' => true,
         'profile_photo_path' => true,
+        'theme_preference' => true,
         'created_at' => true,
         'updated_at' => true,
     ];
@@ -84,5 +86,10 @@ class User extends Entity
         }
 
         return null;
+    }
+    
+    protected function _getFullname(): ?string
+    {
+        return $this->_properties['full_name'] ?? null;
     }
 }

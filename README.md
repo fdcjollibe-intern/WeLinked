@@ -103,7 +103,7 @@ open http://localhost/login
 - `/logout` → Logout
 
 ### Convention-based Routes (automatic)
-- `/users/dashboard` → Same as `/dashboard`
+- `/users/dashboard` → Canonical: `/dashboard`
 - `/users/{action}` → UsersController actions
 - `/{controller}/{action}` → Standard CakePHP routing
 

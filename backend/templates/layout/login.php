@@ -3,7 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $this->fetch('title') ?? 'WeLinked' ?></title>
+    <?php
+    $pageTitle = $this->fetch('title');
+    $controller = strtolower($this->getRequest()->getParam('controller'));
+    if (empty($pageTitle) || $controller === 'dashboard' || strtolower($pageTitle) === 'dashboard') {
+        $fullTitle = 'WeLinked';
+    } else {
+        $fullTitle = 'WeLinked - ' . $pageTitle;
+    }
+    ?>
+    <title><?= h($fullTitle) ?></title>
+    <link rel="icon" href="/favicon.ico" />
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>

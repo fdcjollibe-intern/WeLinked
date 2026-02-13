@@ -15,8 +15,68 @@ class RegisterController extends AppController
     {
         parent::beforeFilter($event);
         
-        // Allow register action without authentication
-        $this->Authentication->addUnauthenticatedActions(['index']);
+        // Allow register actions without authentication
+        $this->Authentication->addUnauthenticatedActions(['index', 'checkUsername', 'checkEmail']);
+    }
+
+    /**
+     * AJAX: check username availability
+     */
+    public function checkUsername()
+    {
+        $this->request->allowMethod(['post']);
+        $this->viewBuilder()->disableAutoLayout();
+        $this->autoRender = false;
+
+        $data = $this->request->getData();
+        $username = isset($data['username']) ? trim($data['username']) : '';
+
+        if ($username === '' || strlen($username) < 3) {
+            $body = json_encode(['available' => false, 'message' => 'Invalid username']);
+            return $this->response->withStatus(400)->withType('application/json')->withStringBody($body);
+        }
+
+        try {
+            $usersTable = $this->fetchTable('Users');
+            $exists = (bool)$usersTable->find()->where(['username' => $username])->select(['id'])->enableHydration(false)->first();
+            $available = !$exists;
+            $body = json_encode(['available' => $available]);
+            return $this->response->withType('application/json')->withStringBody($body);
+        } catch (\Throwable $e) {
+            error_log('checkUsername error: ' . $e->getMessage());
+            $body = json_encode(['available' => false, 'message' => 'error']);
+            return $this->response->withStatus(500)->withType('application/json')->withStringBody($body);
+        }
+    }
+
+    /**
+     * AJAX: check email availability and format
+     */
+    public function checkEmail()
+    {
+        $this->request->allowMethod(['post']);
+        $this->viewBuilder()->disableAutoLayout();
+        $this->autoRender = false;
+
+        $data = $this->request->getData();
+        $email = isset($data['email']) ? trim($data['email']) : '';
+
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $body = json_encode(['available' => false, 'message' => 'invalid']);
+            return $this->response->withStatus(400)->withType('application/json')->withStringBody($body);
+        }
+
+        try {
+            $usersTable = $this->fetchTable('Users');
+            $exists = (bool)$usersTable->find()->where(['email' => $email])->select(['id'])->enableHydration(false)->first();
+            $available = !$exists;
+            $body = json_encode(['available' => $available]);
+            return $this->response->withType('application/json')->withStringBody($body);
+        } catch (\Throwable $e) {
+            error_log('checkEmail error: ' . $e->getMessage());
+            $body = json_encode(['available' => false, 'message' => 'error']);
+            return $this->response->withStatus(500)->withType('application/json')->withStringBody($body);
+        }
     }
 
     /**
@@ -98,6 +158,8 @@ class RegisterController extends AppController
                     // Some DB schemas use `password` column; include both to be compatible
                     'password' => $hashed,
                     'password_hash' => $hashed,
+                    'gender' => 'Prefer not to say',
+                    'profile_photo_path' => null,
                 ]);
 
                 if ($usersTable->save($user)) {

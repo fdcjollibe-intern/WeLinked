@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     profile_photo_path VARCHAR(255) NULL,
+    gender ENUM('Male', 'Female', 'Prefer not to say') NOT NULL DEFAULT 'Prefer not to say',
+    theme_preference ENUM('system', 'light', 'dark') NOT NULL DEFAULT 'system',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_users_username (username)
@@ -40,6 +42,7 @@ CREATE TABLE IF NOT EXISTS posts (
     user_id BIGINT UNSIGNED NOT NULL,
     content_text TEXT NULL,
     content_image_path VARCHAR(255) NULL,
+    location VARCHAR(255) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
@@ -51,7 +54,9 @@ CREATE TABLE IF NOT EXISTS posts (
     
     INDEX idx_posts_user_id (user_id),
     INDEX idx_posts_created_at (created_at DESC),
-    INDEX idx_posts_deleted_at (deleted_at)
+    INDEX idx_posts_deleted_at (deleted_at),
+    INDEX idx_posts_user_created (user_id, created_at DESC),
+    INDEX idx_posts_deleted_created (deleted_at, created_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
@@ -130,7 +135,66 @@ CREATE TABLE IF NOT EXISTS friendships (
     
     UNIQUE KEY uniq_follower_following (follower_id, following_id),
     INDEX idx_friendships_follower (follower_id),
-    INDEX idx_friendships_following (following_id)
+    INDEX idx_friendships_following (following_id),
+    INDEX idx_friendships_follower_created (follower_id, created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- Table: mentions
+-- Description: Track @mentions in posts
+-- ============================================
+CREATE TABLE IF NOT EXISTS mentions (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    post_id BIGINT UNSIGNED NOT NULL,
+    mentioned_user_id BIGINT UNSIGNED NOT NULL COMMENT 'User who was mentioned',
+    mentioned_by_user_id BIGINT UNSIGNED NOT NULL COMMENT 'User who created the mention',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT fk_mentions_post
+        FOREIGN KEY (post_id)
+        REFERENCES posts(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_mentions_mentioned_user
+        FOREIGN KEY (mentioned_user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_mentions_mentioned_by_user
+        FOREIGN KEY (mentioned_by_user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    
+    UNIQUE KEY uniq_post_mentioned_user (post_id, mentioned_user_id),
+    INDEX idx_mentions_mentioned_user (mentioned_user_id),
+    INDEX idx_mentions_post (post_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- Table: notifications
+-- Description: User notifications system
+-- ============================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL COMMENT 'User receiving the notification',
+    actor_id BIGINT UNSIGNED NULL COMMENT 'User who triggered the notification',
+    type ENUM('mention', 'reaction', 'comment', 'follow') NOT NULL,
+    target_type ENUM('post', 'comment', 'user') NULL,
+    target_id BIGINT UNSIGNED NULL COMMENT 'ID of the target (post_id, comment_id, user_id)',
+    message TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT fk_notifications_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_notifications_actor
+        FOREIGN KEY (actor_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    
+    INDEX idx_notifications_user_read (user_id, is_read, created_at DESC),
+    INDEX idx_notifications_type (type),
+    INDEX idx_notifications_target (target_type, target_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================

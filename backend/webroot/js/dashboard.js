@@ -31,6 +31,9 @@
   });
 
   function setupInteractions() {
+    // Handle feed tab switching
+    setupFeedTabs();
+    
     // basic infinite load: when the 15th post is visible, fetch next batch
     const postsContainer = document.getElementById('middle-component')?.querySelector('#posts-list');
     if (!postsContainer) return;
@@ -53,7 +56,8 @@
       if (visibleCount >= threshold) {
         loading = true;
         const start = parseInt(postsContainer.getAttribute('data-start') || '0', 10) + posts.length;
-        loadComponent('/dashboard/middle-column', 'middle-component', { start: start })
+        const feed = postsContainer.getAttribute('data-feed') || 'friends';
+        loadComponent('/dashboard/middle-column', 'middle-component', { start: start, feed: feed })
           .then(function () {
             // update start attribute for next fetch
             postsContainer.setAttribute('data-start', start);
@@ -67,4 +71,39 @@
       checkAndLoad();
     });
   }
+
+  function setupFeedTabs() {
+    const middleComponent = document.getElementById('middle-component');
+    if (!middleComponent) return;
+
+    // Use event delegation for tab clicks
+    middleComponent.addEventListener('click', function(e) {
+      const tab = e.target.closest('.feed-tab');
+      if (!tab) return;
+      
+      const feed = tab.getAttribute('data-feed');
+      if (!feed || feed === 'reels') {
+        e.preventDefault();
+        return;
+      }
+      
+      e.preventDefault();
+      
+      // Update active tab styling
+      const allTabs = middleComponent.querySelectorAll('.feed-tab');
+      allTabs.forEach(function(t) {
+        t.className = 'feed-tab text-gray-400 hover:text-gray-600';
+      });
+      tab.className = 'feed-tab text-blue-500 font-medium border-b-2 border-blue-500 pb-1';
+      
+      // Load posts for selected feed
+      loadComponent('/dashboard/middle-column', 'middle-component', { feed: feed, start: 0 })
+        .then(function() {
+          setupInteractions();
+        });
+    });
+  }
+
+  // Expose setupInteractions for use after dynamic content loads
+  window.setupDashboardInteractions = setupInteractions;
 })();

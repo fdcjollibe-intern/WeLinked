@@ -10,10 +10,11 @@
         "cakephp/cakephp": "^5.3.0",
         "cakephp/migrations": "^4.0.0",
         "cakephp/plugin-installer": "^2.0",
+        "cloudinary/cloudinary_php": "^3.1",
         "mobiledetect/mobiledetectlib": "^4.8.03",
+        "symfony/config": "^7.0",
         "symfony/console": "^7.0",
         "symfony/filesystem": "^7.0",
-        "symfony/config": "^7.0",
         "symfony/string": "^7.0"
     },
     "require-dev": {
