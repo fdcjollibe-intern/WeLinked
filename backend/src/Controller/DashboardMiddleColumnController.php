@@ -14,10 +14,13 @@ class DashboardMiddleColumnController extends AppController
         // Pagination params for AJAX loading
         $start = (int)$this->request->getQuery('start', 0);
         $limit = 20;
-        $feed = $this->request->getQuery('feed', 'foryou'); // 'foryou', 'friends', or 'reels'
+        $feed = $this->request->getQuery('feed', 'friends'); // Changed default to 'friends'
 
         // Get current user ID for reaction checking
         $currentUserId = $this->request->getAttribute('identity')?->getIdentifier();
+
+        // Debug log
+        $this->log("Middle Column: feed=$feed, start=$start, userId=$currentUserId", 'debug');
 
         // Load posts from database
         $posts = [];
@@ -62,6 +65,9 @@ class DashboardMiddleColumnController extends AppController
                 ->offset($start);
 
             $posts = $query->all()->toArray();
+            
+            // Debug log
+            $this->log("Middle Column: Found " . count($posts) . " posts", 'debug');
 
             // Process posts to add reaction summary and user's reaction
             foreach ($posts as $post) {

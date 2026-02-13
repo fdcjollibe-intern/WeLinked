@@ -110,7 +110,7 @@
 
         <!-- Center Content Area -->
         <main id="middle-component" class="flex-1 min-w-0 px-4 lg:px-8">
-            <?= $this->element('middle_column') ?>
+            <!-- Empty by default - will be populated by JavaScript -->
         </main>
 
         <!-- Right Sidebar -->
