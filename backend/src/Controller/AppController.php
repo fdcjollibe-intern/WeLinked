@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use Cake\Controller\Controller;
+use Cake\Event\EventInterface;
 
 /**
  * Application Controller
@@ -49,5 +50,70 @@ class AppController extends Controller
          * see https://book.cakephp.org/5/en/controllers/components/form-protection.html
          */
         //$this->loadComponent('FormProtection');
+    }
+
+    public function beforeRender(EventInterface $event)
+    {
+        parent::beforeRender($event);
+
+        // Skip lightweight fragment responses
+        if (!$this->viewBuilder()->isAutoLayoutEnabled()) {
+            return;
+        }
+
+        $identity = $this->request->getAttribute('identity');
+        if (!$identity) {
+            return;
+        }
+
+        $existingUser = $this->viewBuilder()->hasVar('currentUser')
+            ? $this->viewBuilder()->getVar('currentUser')
+            : null;
+
+        $extractValue = static function ($source, string $key) {
+            if (is_array($source)) {
+                return $source[$key] ?? null;
+            }
+            if (is_object($source) && isset($source->{$key})) {
+                return $source->{$key};
+            }
+            return null;
+        };
+
+        $userId = $identity->id ?? $identity['id'] ?? null;
+        if (!$userId && $existingUser) {
+            $userId = $extractValue($existingUser, 'id');
+        }
+        if (!$userId) {
+            return;
+        }
+
+        $fullName = $extractValue($existingUser, 'full_name') ?? $extractValue($existingUser, 'fullname');
+        $photo = $extractValue($existingUser, 'profile_photo_path');
+        $needsHydration = !$existingUser || empty($photo) || empty($fullName);
+
+        $userData = $existingUser;
+        if ($needsHydration) {
+            $usersTable = $this->fetchTable('Users');
+            $user = $usersTable->find()
+                ->select(['id', 'username', 'full_name', 'profile_photo_path'])
+                ->where(['Users.id' => $userId])
+                ->first();
+
+            if ($user) {
+                $userData = $user;
+            }
+        }
+
+        if ($userData) {
+            if (is_object($userData) && !isset($userData->fullname)) {
+                // Mirror fullname accessor some views expect
+                $userData->fullname = $extractValue($userData, 'full_name');
+            } elseif (is_array($userData) && empty($userData['fullname']) && !empty($userData['full_name'])) {
+                $userData['fullname'] = $userData['full_name'];
+            }
+
+            $this->set('currentUser', $userData);
+        }
     }
 }

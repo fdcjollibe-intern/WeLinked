@@ -7,10 +7,29 @@ class ProfileController extends AppController
 {
     public function index($username = null)
     {
-        $this->viewBuilder()->disableAutoLayout();
-        
         $identity = $this->request->getAttribute('identity');
+        $currentUserId = $identity->id ?? $identity['id'];
         
+        // Debug logging
+        $isAjax = $this->request->is('ajax');
+        $hasPartial = $this->request->getQuery('partial');
+        $this->log("ProfileController::index - initial username param: " . ($username ?? 'NULL') . ", isAjax: " . ($isAjax ? 'yes' : 'no') . ", hasPartial: " . ($hasPartial ? 'yes' : 'no'), 'debug');
+
+        // Fallback for wildcard routes: pull username from pass params if not provided explicitly
+        if ($username === null) {
+            $passSegments = (array)$this->request->getParam('pass', []);
+            if (!empty($passSegments)) {
+                $username = $passSegments[0];
+                $this->log("ProfileController::index - username resolved from pass segment: {$username}", 'debug');
+            }
+        }
+        
+        // If no username provided and not AJAX, redirect to own profile with username
+        if ($username === null && !$this->request->is('ajax')) {
+            return $this->redirect('/profile/' . $identity->username);
+        }
+        
+        // For AJAX requests without username, use current user's username
         if ($username === null) {
             $username = $identity->username;
         }
@@ -21,7 +40,7 @@ class ProfileController extends AppController
             ->first();
             
         if (!$user) {
-            return $this->response->withStatus(404);
+            throw new \Cake\Http\Exception\NotFoundException('User not found');
         }
         
         $postsTable = $this->fetchTable('Posts');
@@ -36,8 +55,28 @@ class ProfileController extends AppController
         
         $detect = new \Detection\MobileDetect();
         $isMobileView = $detect->isMobile() && !$detect->isTablet();
-            
-        $this->set(compact('user', 'postCount', 'followersCount', 'followingCount', 'identity', 'isMobileView'));
+        
+        // If requested via AJAX, return only the profile content element
+        if ($this->request->is('ajax') || $this->request->getQuery('partial')) {
+            $this->viewBuilder()->disableAutoLayout();
+            $this->set(compact('user', 'postCount', 'followersCount', 'followingCount', 'identity', 'isMobileView'));
+            $this->render('/element/Profile/profile_content');
+            return;
+        }
+        
+        // Create currentUser object for navigation
+        $currentUser = $identity ? (object)[
+            'id' => $currentUserId,
+            'username' => $identity->username ?? $identity['username'] ?? 'User',
+            'fullname' => $identity->full_name ?? $identity['full_name'] ?? 'Full Name'
+        ] : (object)['username' => 'Guest', 'fullname' => 'Guest User'];
+        
+        $this->log("ProfileController::index - Rendering full dashboard layout for non-AJAX request", 'debug');
+        
+        // Render full dashboard layout with profile in middle column
+        $this->set(compact('user', 'postCount', 'followersCount', 'followingCount', 'identity', 'isMobileView', 'currentUser'));
+        $this->viewBuilder()->setTemplate('dashboard');
+        $this->viewBuilder()->setLayout('default');
     }
     
     /**
@@ -49,7 +88,6 @@ class ProfileController extends AppController
     public function followers($username = null)
     {
         $this->request->allowMethod(['get']);
-        $this->viewBuilder()->setOption('serialize', ['success', 'followers']);
         
         $identity = $this->request->getAttribute('identity');
         
@@ -63,8 +101,9 @@ class ProfileController extends AppController
             ->first();
             
         if (!$user) {
-            $this->set(['success' => false, 'message' => 'User not found']);
-            return;
+            return $this->response->withType('application/json')
+                ->withStatus(404)
+                ->withStringBody(json_encode(['success' => false, 'message' => 'User not found']));
         }
         
         $friendshipsTable = $this->fetchTable('Friendships');
@@ -75,6 +114,13 @@ class ProfileController extends AppController
         $followers = [];
         foreach ($followersQuery as $friendship) {
             $follower = $friendship->followers;
+            
+            // Skip if follower data is null
+            if (!$follower || !$follower->id) {
+                $this->log("Skipping null follower in friendship ID: " . $friendship->id, 'warning');
+                continue;
+            }
+            
             $isFollowing = $friendshipsTable->isFollowing($currentUserId, $follower->id);
             
             $followers[] = [
@@ -86,7 +132,8 @@ class ProfileController extends AppController
             ];
         }
         
-        $this->set(['success' => true, 'followers' => $followers]);
+        return $this->response->withType('application/json')
+            ->withStringBody(json_encode(['success' => true, 'followers' => $followers]));
     }
     
     /**
@@ -98,7 +145,6 @@ class ProfileController extends AppController
     public function following($username = null)
     {
         $this->request->allowMethod(['get']);
-        $this->viewBuilder()->setOption('serialize', ['success', 'following']);
         
         $identity = $this->request->getAttribute('identity');
         
@@ -112,8 +158,9 @@ class ProfileController extends AppController
             ->first();
             
         if (!$user) {
-            $this->set(['success' => false, 'message' => 'User not found']);
-            return;
+            return $this->response->withType('application/json')
+                ->withStatus(404)
+                ->withStringBody(json_encode(['success' => false, 'message' => 'User not found']));
         }
         
         $friendshipsTable = $this->fetchTable('Friendships');
@@ -135,7 +182,8 @@ class ProfileController extends AppController
             ];
         }
         
-        $this->set(['success' => true, 'following' => $following]);
+        return $this->response->withType('application/json')
+            ->withStringBody(json_encode(['success' => true, 'following' => $following]));
     }
 }
 

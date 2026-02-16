@@ -20,12 +20,16 @@ class DashboardMiddleColumnController extends AppController
         $currentUserId = $this->request->getAttribute('identity')?->getIdentifier();
 
         // Debug log
-        $this->log("Middle Column: feed=$feed, start=$start, userId=$currentUserId", 'debug');
+        $this->log("===== Middle Column Request Start =====", 'debug');
+        $this->log("Feed: $feed, Start: $start, User ID: $currentUserId", 'debug');
+        $this->log("Request URL: " . $this->request->getRequestTarget(), 'debug');
 
         // Load posts from database
         $posts = [];
-        if ($this->getTableLocator()->exists('Posts')) {
-            $postsTable = $this->getTableLocator()->get('Posts');
+        $this->log("Checking if Posts table exists...", 'debug');
+        try {
+            $postsTable = $this->fetchTable('Posts');
+            $this->log("Posts table found, building query...", 'debug');
             
             // Build the query
             $query = $postsTable->find()
@@ -41,6 +45,7 @@ class DashboardMiddleColumnController extends AppController
 
             // Apply feed filter
             if ($feed === 'friends' && $currentUserId) {
+                $this->log("Feed is 'friends', checking friendships...", 'debug');
                 // Only show posts from users that the current user follows
                 $friendshipsTable = $this->getTableLocator()->get('Friendships');
                 $friendIds = $friendshipsTable->find()
@@ -49,25 +54,40 @@ class DashboardMiddleColumnController extends AppController
                     ->extract('following_id')
                     ->toArray();
 
+                $this->log("Found " . count($friendIds) . " friends for user $currentUserId", 'debug');
+
                 if (!empty($friendIds)) {
                     // Include current user's posts and friends' posts
                     $friendIds[] = $currentUserId;
                     $query->where(['Posts.user_id IN' => $friendIds]);
+                    $this->log("Filtering posts for user IDs: " . implode(', ', $friendIds), 'debug');
                 } else {
                     // No friends, only show current user's posts
                     $query->where(['Posts.user_id' => $currentUserId]);
+                    $this->log("No friends found, showing only current user's posts", 'debug');
                 }
+            } else {
+                $this->log("Feed is 'foryou' or no user, showing all posts", 'debug');
             }
             // For 'foryou', show all posts (no additional filter needed)
 
-            $query->orderDesc('Posts.created_at')
+            // Randomize order so results are not sequential from DB.
+            // For both 'foryou' (all posts) and 'friends' (followed users),
+            // return a random selection to satisfy the UX requirement.
+            $query->order('RAND()')
                 ->limit($limit)
                 ->offset($start);
 
             $posts = $query->all()->toArray();
             
             // Debug log
-            $this->log("Middle Column: Found " . count($posts) . " posts", 'debug');
+            $this->log("Query executed, found " . count($posts) . " posts", 'debug');
+            if (count($posts) > 0) {
+                $postIds = array_map(function($p) { return $p->id; }, $posts);
+                $this->log("Post IDs: " . implode(', ', $postIds), 'debug');
+            } else {
+                $this->log("WARNING: No posts found! Check database and filters.", 'debug');
+            }
 
             // Process posts to add reaction summary and user's reaction
             foreach ($posts as $post) {
@@ -107,9 +127,20 @@ class DashboardMiddleColumnController extends AppController
                     }
                 }
             }
+        } catch (\Exception $e) {
+            $this->log("ERROR loading posts: " . $e->getMessage(), 'error');
+            $this->log("Stack trace: " . $e->getTraceAsString(), 'error');
         }
 
-        $this->set(compact('posts', 'start', 'limit', 'feed'));
+        //Ensure currentUser is set for template
+        $currentUser = $this->request->getAttribute('identity');
+        if (!$currentUser) {
+            $currentUser = (object)['username' => 'Guest', 'full_name' => 'Guest User'];
+        }
+        
+        $this->set(compact('posts', 'start', 'limit', 'feed', 'currentUser'));
+        $this->log("Setting template variables: posts=" . count($posts) . ", start=$start, limit=$limit, feed=$feed", 'debug');
+        $this->log("===== Middle Column Request End =====", 'debug');
         // Render the existing template under templates/MiddleColumn/index.php
         return $this->render('/MiddleColumn/index');
     }

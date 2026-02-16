@@ -70,7 +70,8 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
+  function initializeMiddleColumn() {
+    console.debug('[middle.js] Initializing composer and handlers');
     const input = el('attachment-input');
     // reuse existing preview container if present, otherwise create and append to composer
     let preview = document.getElementById('attachment-preview');
@@ -82,12 +83,20 @@
       else document.body.appendChild(preview);
     }
 
-    const submit = el('post-submit');
-    const postInput = el('post-input');
+    const submit = el('post-submit-btn'); // Updated to match template ID
+    const postInput = el('post-composer-textarea'); // Updated to match template ID
+    console.debug('[middle.js] Found elements:', { input: !!input, submit: !!submit, postInput: !!postInput });
 
     // Exit early if required elements don't exist (not on a page with composer)
     if (!input || !submit || !postInput) {
       return;
+    }
+    
+    // Initialize mention autocomplete
+    let mentionAutocomplete = null;
+    if (window.MentionAutocomplete && postInput) {
+      mentionAutocomplete = new window.MentionAutocomplete(postInput);
+      console.debug('[middle.js] Mention autocomplete initialized');
     }
     
     // Auto-resize textarea: keep single-line height until text wraps or user adds lines
@@ -171,12 +180,24 @@
 
       (function uploadNext(i) {
         if (i >= files.length) {
+          // Get mentioned user IDs
+          const mentionedUserIds = mentionAutocomplete ? mentionAutocomplete.getMentionedUserIds() : [];
+          
+          console.debug('[middle.js] Creating post with mentions:', mentionedUserIds);
+          
           // create post with uploadedUrls
           fetch('/dashboard/posts/create', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ body: body, attachments: uploadedUrls, is_reel: isReel })
+            body: JSON.stringify({ 
+              body: body, 
+              content_text: body,
+              attachments: uploadedUrls, 
+              media: uploadedUrls,
+              mentions: mentionedUserIds,
+              is_reel: isReel 
+            })
           }).then(function (r) { return r.json(); })
             .then(function (json) {
               // show modal with close button
@@ -217,6 +238,7 @@
                 article.innerHTML = html;
                 
                 // Insert after composer
+                postInput.mentionedUsers = []; // Clear mentioned users
                 const composer = postsList.querySelector('.composer');
                 if (composer && composer.nextSibling) {
                   postsList.insertBefore(article, composer.nextSibling);
@@ -282,6 +304,21 @@
       }
       window.addEventListener('scroll', onScroll);
     })();
-  });
-})();
+  }
 
+  // Initialize on DOMContentLoaded
+  document.addEventListener('DOMContentLoaded', function () {
+    initializeMiddleColumn();
+  });
+
+  // Also initialize when middle column fragment is loaded dynamically
+  document.addEventListener('fragment:loaded', function(e) {
+    if (e.detail && e.detail.container === 'middle-component') {
+      console.debug('[middle.js] Fragment loaded, re-initializing');
+      setTimeout(initializeMiddleColumn, 50); // Small delay to ensure DOM is ready
+    }
+  });
+
+  // Expose globally for manual initialization if needed
+  window.initializeMiddleColumn = initializeMiddleColumn;
+})();

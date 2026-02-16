@@ -213,6 +213,59 @@ class RegisterController extends AppController
                     ->withType('application/json')
                     ->withStringBody($body);
             }
+
+            // Handle regular form POST submissions (non-JSON)
+            $data = $this->request->getData();
+            $plainPassword = $data['password'] ?? '';
+            $confirm = $data['confirmPassword'] ?? '';
+
+            if ($plainPassword !== $confirm) {
+                $this->Flash->error(__('Passwords do not match'));
+            } elseif (strlen($plainPassword) < 6) {
+                $this->Flash->error(__('Password must be at least 6 characters'));
+            } else {
+                try {
+                    $usersTable = $this->fetchTable('Users');
+                    $hasher = new \Authentication\PasswordHasher\DefaultPasswordHasher([
+                        'hashType' => PASSWORD_ARGON2ID,
+                    ]);
+                    $hashed = $hasher->hash($plainPassword);
+
+                    $user = $usersTable->newEmptyEntity();
+                    $user = $usersTable->patchEntity($user, [
+                        'full_name' => $data['full_name'] ?? null,
+                        'username' => $data['username'] ?? null,
+                        'email' => $data['email'] ?? null,
+                        'password' => $hashed,
+                        'password_hash' => $hashed,
+                        'gender' => 'Prefer not to say',
+                        'profile_photo_path' => null,
+                    ]);
+
+                    if ($usersTable->save($user)) {
+                        // Auto-login and redirect to dashboard
+                        $this->Authentication->setIdentity($user);
+                        return $this->redirect('/dashboard');
+                    }
+
+                    $errors = $user->getErrors();
+                    if (!empty($errors)) {
+                        $firstField = array_key_first($errors);
+                        $fieldErrors = $errors[$firstField] ?? [];
+                        if (is_array($fieldErrors)) {
+                            $rawMsg = reset($fieldErrors);
+                        } else {
+                            $rawMsg = (string)$fieldErrors;
+                        }
+                        $this->Flash->error($rawMsg ?: __('Registration failed'));
+                    } else {
+                        $this->Flash->error(__('Registration failed. Please try again.'));
+                    }
+                } catch (\Throwable $e) {
+                    error_log('Register (form) error: ' . $e->getMessage());
+                    $this->Flash->error(__('Registration failed. Please try again.'));
+                }
+            }
         }
 
         $this->viewBuilder()->setLayout('login');

@@ -91,6 +91,9 @@ class SearchManager {
     async performSearch(query) {
         this.currentQuery = query;
         
+        // Show loading state
+        this.showLoading();
+        
         try {
             const response = await fetch(`/api/search/suggest?q=${encodeURIComponent(query)}&type=${this.currentType}&limit=5`);
             const data = await response.json();
@@ -100,6 +103,7 @@ class SearchManager {
             }
         } catch (error) {
             console.error('Search error:', error);
+            this.hideLoading();
         }
     }
 
@@ -205,6 +209,23 @@ class SearchManager {
         if (this.searchDropdown) {
             this.searchDropdown.classList.add('hidden');
         }
+    }
+
+    showLoading() {
+        if (!this.searchDropdown) return;
+        
+        const loadingHTML = `
+            <div class="p-8 text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="text-sm text-gray-500 mt-3">Searching...</p>
+            </div>
+        `;
+        this.searchDropdown.innerHTML = loadingHTML;
+        this.showDropdown();
+    }
+
+    hideLoading() {
+        // Loading is hidden when results are rendered or dropdown is hidden
     }
 
     escapeHtml(text) {

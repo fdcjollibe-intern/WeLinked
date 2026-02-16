@@ -9,16 +9,26 @@ class SettingsController extends AppController
 {
     public function index()
     {
-        $this->viewBuilder()->disableAutoLayout();
         $identity = $this->request->getAttribute('identity');
-        
+
         $user = $this->fetchTable('Users')->get($identity->id);
         $activeSection = $this->request->getQuery('section', 'account');
-        
+
         $detect = new \Detection\MobileDetect();
         $isMobileView = $detect->isMobile() && !$detect->isTablet();
-        
-        $this->set(compact('user', 'activeSection', 'isMobileView'));
+
+        $currentUser = $user;
+        $suggestions = [];
+        $friendsCount = 0;
+        $posts = [];
+        $this->set(compact('user', 'activeSection', 'isMobileView', 'currentUser', 'suggestions', 'friendsCount', 'posts'));
+
+        if ($this->request->is('ajax') || $this->request->getQuery('partial')) {
+            $this->viewBuilder()->disableAutoLayout();
+            return;
+        }
+
+        return $this->render('dashboard');
     }
     
     public function updateAccount()
@@ -42,8 +52,20 @@ class SettingsController extends AppController
         $user = $usersTable->patchEntity($user, $data);
         
         if ($usersTable->save($user)) {
+            if (isset($this->Authentication)) {
+                $this->Authentication->setIdentity($user);
+            }
+
             return $this->response->withType('application/json')
-                ->withStringBody(json_encode(['success' => true, 'message' => 'Profile updated successfully']));
+                ->withStringBody(json_encode([
+                    'success' => true,
+                    'message' => 'Profile updated successfully',
+                    'user' => [
+                        'username' => $user->username,
+                        'full_name' => $user->full_name,
+                        'gender' => $user->gender,
+                    ],
+                ]));
         }
         
         return $this->response->withType('application/json')
@@ -132,11 +154,16 @@ class SettingsController extends AppController
                 $user->profile_photo_path = $result['url'];
                 
                 if ($usersTable->save($user)) {
+                    if (isset($this->Authentication)) {
+                        $this->Authentication->setIdentity($user);
+                    }
+
                     return $this->response->withType('application/json')
                         ->withStringBody(json_encode([
                             'success' => true,
                             'message' => 'Profile photo uploaded successfully',
-                            'url' => $result['url']
+                            'url' => $result['url'],
+                            'user' => ['profile_photo_path' => $result['url']],
                         ]));
                 }
             }

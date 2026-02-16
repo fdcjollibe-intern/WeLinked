@@ -24,6 +24,11 @@ class FriendsController extends AppController
         
         $identity = $this->request->getAttribute('identity');
         $currentUserId = $identity->id ?? $identity['id'];
+        $currentUser = $identity ? (object)[
+            'id' => $currentUserId,
+            'username' => $identity->username ?? $identity['username'] ?? 'User',
+            'fullname' => $identity->full_name ?? $identity['full_name'] ?? 'Full Name'
+        ] : (object)['username' => 'Guest', 'fullname' => 'Guest User'];
         
         // Get following (people I follow)
         $followingQuery = $friendshipsTable->getFriends($currentUserId)->all();
@@ -47,6 +52,13 @@ class FriendsController extends AppController
         $followers = [];
         foreach ($followersQuery as $friendship) {
             $follower = $friendship->followers;
+            
+            // Skip if follower data is null
+            if (!$follower || !$follower->id) {
+                $this->log("Skipping null follower in friendship ID: " . $friendship->id, 'warning');
+                continue;
+            }
+            
             $mutualCount = $friendshipsTable->getMutualFriendsCount($currentUserId, $follower->id);
             $isFollowingBack = $friendshipsTable->isFollowing($currentUserId, $follower->id);
             
@@ -61,15 +73,17 @@ class FriendsController extends AppController
             ];
         }
         
-        // If requested via AJAX, return only the middle column
+        // If requested via AJAX, return only the friends list element
         if ($this->request->is('ajax') || $this->request->getQuery('partial')) {
             $this->viewBuilder()->disableAutoLayout();
             $this->set(compact('following', 'followers'));
-            $this->render('/Friends/index');
+            $this->render('/element/Friends/friends_list');
             return;
         }
         
-        $this->set(compact('following', 'followers'));
+        // Render full dashboard layout with friends in middle column
+        $this->set(compact('following', 'followers', 'currentUser'));
+        $this->render('dashboard');
     }
 
     /**
@@ -133,21 +147,29 @@ class FriendsController extends AppController
             return;
         }
         
-        $result = $friendshipsTable->follow($currentUserId, $followingId);
-        
-        if ($result) {
-            $this->set([
-                'success' => true,
-                'message' => 'Successfully followed user'
-            ]);
-        } else {
-            $this->set([
+        try {
+            $result = $friendshipsTable->follow($currentUserId, $followingId);
+            
+            $this->log("Follow action: user $currentUserId -> $followingId, result: " . ($result ? 'success' : 'already following'), 'debug');
+            
+            if ($result) {
+                return $this->response->withType('application/json')->withStringBody(json_encode([
+                    'success' => true,
+                    'message' => 'Successfully followed user'
+                ]));
+            } else {
+                return $this->response->withType('application/json')->withStringBody(json_encode([
+                    'success' => false,
+                    'message' => 'Already following this user'
+                ]));
+            }
+        } catch (\Exception $e) {
+            $this->log("Follow error: " . $e->getMessage(), 'error');
+            return $this->response->withType('application/json')->withStatus(500)->withStringBody(json_encode([
                 'success' => false,
-                'message' => 'Already following this user'
-            ]);
+                'message' => 'An error occurred while following user'
+            ]));
         }
-        
-        $this->viewBuilder()->setOption('serialize', ['success', 'message']);
     }
 
     /**
@@ -167,29 +189,35 @@ class FriendsController extends AppController
         $followingId = (int)($data['user_id'] ?? 0);
         
         if ($followingId === 0) {
-            $this->set([
+            return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode([
                 'success' => false,
                 'message' => 'Invalid user ID'
-            ]);
-            $this->viewBuilder()->setOption('serialize', ['success', 'message']);
-            return;
+            ]));
         }
         
-        $result = $friendshipsTable->unfollow($currentUserId, $followingId);
-        
-        if ($result) {
-            $this->set([
-                'success' => true,
-                'message' => 'Successfully unfollowed user'
-            ]);
-        } else {
-            $this->set([
+        try {
+            $result = $friendshipsTable->unfollow($currentUserId, $followingId);
+            
+            $this->log("Unfollow action: user $currentUserId unfollowed $followingId, result: " . ($result ? 'success' : 'not following'), 'debug');
+            
+            if ($result) {
+                return $this->response->withType('application/json')->withStringBody(json_encode([
+                    'success' => true,
+                    'message' => 'Successfully unfollowed user'
+                ]));
+            } else {
+                return $this->response->withType('application/json')->withStringBody(json_encode([
+                    'success' => false,
+                    'message' => 'Not following this user'
+                ]));
+            }
+        } catch (\Exception $e) {
+            $this->log("Unfollow error: " . $e->getMessage(), 'error');
+            return $this->response->withType('application/json')->withStatus(500)->withStringBody(json_encode([
                 'success' => false,
-                'message' => 'Not following this user'
-            ]);
+                'message' => 'An error occurred while unfollowing user'
+            ]));
         }
-        
-        $this->viewBuilder()->setOption('serialize', ['success', 'message']);
     }
 
     /**

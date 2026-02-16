@@ -34,6 +34,12 @@ class User extends Entity
         'password_hash' => true,
         'profile_photo_path' => true,
         'theme_preference' => true,
+        'bio' => true,
+        'location' => true,
+        'website' => true,
+        'birthday' => true,
+        'gender' => true,
+        'is_private' => true,
         'created_at' => true,
         'updated_at' => true,
     ];

@@ -1,12 +1,44 @@
 // dashboard.js — loads components and implements basic infinite-loading trigger
 (function () {
+  function insertHtmlWithScripts(container, html) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    Array.from(temp.childNodes).forEach(function (node) {
+      if (node.nodeName && node.nodeName.toLowerCase() === 'script') return;
+      container.appendChild(node.cloneNode(true));
+    });
+
+    Array.from(temp.querySelectorAll('script')).forEach(function (oldScript) {
+      const script = document.createElement('script');
+      if (oldScript.src) {
+        script.src = oldScript.src;
+      } else {
+        script.textContent = oldScript.textContent;
+      }
+      script.async = false;
+      document.head.appendChild(script);
+      document.head.removeChild(script);
+    });
+  }
+
   function loadComponent(path, containerId, params) {
     let url = path;
     if (params) url += '?' + new URLSearchParams(params).toString();
+    console.debug('Loading component', containerId, 'from', url);
     return fetch(url, { credentials: 'same-origin' })
       .then(function (r) { return r.text(); })
       .then(function (html) {
-        document.getElementById(containerId).innerHTML = html;
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        insertHtmlWithScripts(container, html);
+        container.dispatchEvent(new CustomEvent('fragment:loaded', { detail: { path: url, container: containerId } }));
+        return html;
+      })
+      .catch(function (err) {
+        console.error('Failed to load component', containerId, 'from', url, err);
+        throw err;
       });
   }
 

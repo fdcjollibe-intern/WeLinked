@@ -1,20 +1,26 @@
 <?php
 /**
- * Dashboard - Modern Social Feed Design
+ * Settings Dashboard View
+ * Renders the full three-column layout with the settings panel in the middle column.
  */
 ?>
 <?= $this->Html->css('dashboard') ?>
 <script>
-    // Expose CSRF token for JavaScript
-    window.csrfToken = '<?= $this->request->getAttribute('csrfToken') ?>';
+    (function(){
+        const token = '<?= $this->request->getAttribute('csrfToken') ?>';
+        if (token && !window.csrfToken) {
+            window.csrfToken = token;
+        }
+        if (window.csrfToken && !window.CSRF_TOKEN) {
+            window.CSRF_TOKEN = window.csrfToken;
+        }
+    })();
 </script>
 
-<!-- Desktop / large view navbar -->
 <?php $navHasPhoto = !empty($currentUser->profile_photo_path); ?>
 <?php if (empty($isMobileView)): ?>
 <nav class="bg-white shadow-sm fixed top-0 left-0 right-0 z-50 h-16">
     <div class="flex items-center justify-between px-6 h-full max-w-screen-2xl mx-auto">
-        <!-- Left: Logo + Search -->
         <div class="flex items-center space-x-6">
             <a href="<?= $this->Url->build('/') ?>" class="flex items-center space-x-2">
                 <picture>
@@ -31,9 +37,7 @@
             </div>
         </div>
 
-        <!-- Right: User actions -->
         <div class="flex items-center space-x-4">
-            <!-- Notifications Bell -->
             <div class="relative">
                 <button id="notifications-bell" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors relative">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,7 +57,6 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
             </button>
-            <!-- Profile Avatar with gradient border -->
             <div class="relative">
                 <div class="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
                     <div class="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
@@ -76,7 +79,6 @@
     </div>
 </nav>
 <?php else: ?>
-<!-- Mobile top bar: logo (eLinked) + right icons -->
 <nav class="bg-white border-b fixed top-0 left-0 right-0 z-50 h-14 flex items-center px-4">
     <div class="flex items-center justify-between w-full max-w-screen-2xl mx-auto">
         <a href="<?= $this->Url->build('/') ?>" class="flex items-center space-x-2">
@@ -88,19 +90,16 @@
         </a>
 
         <div class="flex items-center space-x-3">
-            <!-- Create icon -->
             <button aria-label="Create" class="p-2 rounded-md text-gray-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
             </button>
-            <!-- Search icon -->
             <button aria-label="Search" class="p-2 rounded-md text-gray-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
             </button>
-            <!-- Message bubble icon -->
             <button aria-label="Messages" class="p-2 rounded-md text-gray-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8-1.45 0-2.83-.27-4.065-.76L3 21l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
@@ -111,21 +110,21 @@
 </nav>
 <?php endif; ?>
 
-<!-- Main layout -->
 <?php $mobilePad = (!empty($isMobileView) ? 'pt-14 pb-20' : 'pt-20'); ?>
 <div class="bg-gray-50 min-h-screen <?= $mobilePad ?>">
     <div class="max-w-screen-2xl mx-auto flex">
-        <!-- Left Sidebar -->
         <aside id="left-component" class="hidden lg:block w-72 flex-shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto px-4">
             <?= $this->element('left_sidebar') ?>
         </aside>
 
-        <!-- Center Content Area -->
         <main id="middle-component" class="flex-1 min-w-0 px-4 lg:px-8">
-            <!-- Empty by default - will be populated by JavaScript -->
+            <?= $this->element('Settings/settings_panel', [
+                'user' => $user,
+                'activeSection' => $activeSection,
+                'isMobileView' => $isMobileView,
+            ]) ?>
         </main>
 
-        <!-- Right Sidebar -->
         <aside id="right-component" class="hidden xl:block w-80 flex-shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-y-auto px-4">
             <?= $this->element('right_sidebar') ?>
         </aside>
@@ -138,7 +137,6 @@
 <?= $this->Html->script('gallery') ?>
 
 <?php if (!empty($isMobileView)): ?>
-<!-- Mobile bottom navigation -->
 <nav class="fixed bottom-0 left-0 right-0 bg-white border-t z-50">
     <div class="max-w-screen-2xl mx-auto px-4">
         <div class="grid grid-cols-5 gap-2 text-center py-2">
@@ -166,7 +164,7 @@
                 </svg>
                 <span class="text-xs leading-tight">Notifications</span>
             </a>
-            <a href="/users/dashboard" class="flex flex-col items-center justify-center text-gray-700">
+            <a href="/settings" class="flex flex-col items-center justify-center text-gray-900">
                 <div class="w-6 h-6 rounded-full mb-0.5 overflow-hidden bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[1px]">
                     <div class="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                         <img
@@ -183,14 +181,13 @@
                         </div>
                     </div>
                 </div>
-                <span class="text-xs leading-tight">Menu</span>
+                <span class="text-xs leading-tight">Settings</span>
             </a>
         </div>
     </div>
 </nav>
 <?php endif; ?>
 
-<!-- Load JS modules -->
 <script src="/js/dashboard.js"></script>
 <script src="/js/mentions.js"></script>
 <script src="/js/middle.js"></script>

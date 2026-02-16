@@ -9,23 +9,21 @@ return function (RouteBuilder $routes): void {
 
     $routes->scope('/', function (RouteBuilder $builder): void {
       
-        // Profile routes FIRST - must come before fallbacks to prevent controller/action matching
-        $builder->connect(
-            '/profile/:username/followers',
-            ['controller' => 'Profile', 'action' => 'followers', 'pass' => ['username']],
-            ['username' => '[a-zA-Z0-9_]+']
-        );
-        $builder->connect(
-            '/profile/:username/following',
-            ['controller' => 'Profile', 'action' => 'following', 'pass' => ['username']],
-            ['username' => '[a-zA-Z0-9_]+']
-        );
-        $builder->connect(
-            '/profile/:username',
-            ['controller' => 'Profile', 'action' => 'index', 'pass' => ['username']],
-            ['username' => '[a-zA-Z0-9_]+']
-        );
-        $builder->connect('/profile', ['controller' => 'Profile', 'action' => 'index']);
+        // Profile routes FIRST before fallbacks to ensure usernames map correctly
+        $builder->connect('/profile', ['controller' => 'Profile', 'action' => 'index', '_name' => 'profile_own']);
+        $builder->connect('/profile/{username}/followers', ['controller' => 'Profile', 'action' => 'followers', '_name' => 'profile_followers'])
+            ->setPass(['username'])
+            ->setPatterns(['username' => '[a-zA-Z0-9_.]+']);
+        $builder->connect('/profile/{username}/following', ['controller' => 'Profile', 'action' => 'following', '_name' => 'profile_following'])
+            ->setPass(['username'])
+            ->setPatterns(['username' => '[a-zA-Z0-9_.]+']);
+        $builder->connect('/profile/{username}', ['controller' => 'Profile', 'action' => 'index', '_name' => 'profile_view'])
+            ->setPass(['username'])
+            ->setPatterns(['username' => '[a-zA-Z0-9_.]+']);
+        // Fallback last to catch any extra /profile/{username}/* paths (e.g., legacy tabs)
+        $builder->connect('/profile/{username}/*', ['controller' => 'Profile', 'action' => 'index', '_name' => 'profile_fallback'])
+            ->setPass(['username'])
+            ->setPatterns(['username' => '[a-zA-Z0-9_.]+']);
         
         // Ignore .well-known paths to prevent routing errors
         $builder->connect('/.well-known/*', ['controller' => 'Error', 'action' => 'error404']);
@@ -67,9 +65,9 @@ return function (RouteBuilder $routes): void {
         
         // Posts API - CRUD operations
         $builder->connect('/dashboard/posts/create', ['controller' => 'DashboardPosts', 'action' => 'create']);
-        $builder->connect('/dashboard/posts/edit/:id', ['controller' => 'DashboardPosts', 'action' => 'edit'])
+        $builder->connect('/dashboard/posts/edit/{id}', ['controller' => 'DashboardPosts', 'action' => 'edit'])
             ->setPass(['id']);
-        $builder->connect('/dashboard/posts/delete/:id', ['controller' => 'DashboardPosts', 'action' => 'delete'])
+        $builder->connect('/dashboard/posts/delete/{id}', ['controller' => 'DashboardPosts', 'action' => 'delete'])
             ->setPass(['id']);
         
         // Reactions API (toggle/add/remove)
@@ -81,7 +79,7 @@ return function (RouteBuilder $routes): void {
         // Notifications API
         $builder->connect('/api/notifications', ['controller' => 'Notifications', 'action' => 'index']);
         $builder->connect('/api/notifications/unread-count', ['controller' => 'Notifications', 'action' => 'unreadCount']);
-        $builder->connect('/api/notifications/mark-read/:id', ['controller' => 'Notifications', 'action' => 'markAsRead'])
+        $builder->connect('/api/notifications/mark-read/{id}', ['controller' => 'Notifications', 'action' => 'markAsRead'])
             ->setPass(['id']);
         $builder->connect('/api/notifications/mark-all-read', ['controller' => 'Notifications', 'action' => 'markAllAsRead']);
 

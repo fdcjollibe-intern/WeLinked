@@ -1,20 +1,34 @@
+<?php $hasProfilePhoto = !empty($currentUser->profile_photo_path); ?>
 <div class="flex flex-col h-full">
     <!-- User Profile Section -->
     <div class="text-center py-6 px-4">
         <a href="#" data-nav="profile" class="inline-block mb-3 cursor-pointer hover:opacity-80 transition-opacity">
             <div class="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 via-purple-400 to-blue-400 p-1">
                 <div class="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                    <div class="w-full h-full rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-bold">
-                        <?= strtoupper(substr($currentUser->username ?? 'U', 0, 1)) ?>
+                    <img
+                        data-avatar="current-user"
+                        src="<?= $hasProfilePhoto ? h($currentUser->profile_photo_path) : '' ?>"
+                        alt="<?= h($currentUser->username ?? 'Profile photo') ?>"
+                        class="w-full h-full object-cover <?= $hasProfilePhoto ? '' : 'hidden' ?>"
+                    >
+                    <div
+                        data-avatar-fallback="current-user"
+                        class="w-full h-full rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-bold <?= $hasProfilePhoto ? 'hidden' : '' ?>"
+                    >
+                        <span data-user-initial><?= strtoupper(substr($currentUser->username ?? 'U', 0, 1)) ?></span>
                     </div>
                 </div>
             </div>
         </a>
         <p href="#" data-nav="profile" class="block hover:underline cursor-pointer">
-            <h3 class="font-semibold text-gray-900"><?= h($currentUser->full_name ?? $currentUser->fullname ?? 'Your Name') ?></h3>
+            <h3 class="font-semibold text-gray-900" data-user-fullname>
+                <?= h($currentUser->full_name ?? $currentUser->fullname ?? 'Your Name') ?>
+            </h3>
         </p>
         <a href="#" data-nav="profile" class="block hover:underline cursor-pointer">
-            <p class="text-sm text-gray-500">@<?= h($currentUser->username ?? 'username') ?></p>
+            <p class="text-sm text-gray-500" data-user-username>
+                @<?= h($currentUser->username ?? 'username') ?>
+            </p>
         </a>
     </div>
 
@@ -51,8 +65,8 @@
             </li>
             <li>
                 <a href="#" data-nav="logout" class="nav-link flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full font-medium">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                    <span>Logout</span>
+                    <svg class="w-5 h-5 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    <span class="text-red-500 px-2 py-1 rounded">Logout</span>
                 </a>
             </li>
         </ul>
@@ -76,11 +90,88 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('logout-modal');
+(function() {
+    function initLeftSidebar() {
+        if (window.__leftSidebarInitialized) {
+            return;
+        }
+        window.__leftSidebarInitialized = true;
 
-    // Helper to insert HTML and execute inline scripts from fetched fragment
-    function insertFragment(middleColumn, html) {
+        const modal = document.getElementById('logout-modal');
+        
+        // Track current user data so profile links stay accurate after edits
+        let currentUsername = '<?= h($currentUser->username ?? 'username') ?>';
+
+        function updateNameTargets(detail) {
+            if (detail.fullName) {
+                document.querySelectorAll('[data-user-fullname]').forEach(node => {
+                    node.textContent = detail.fullName;
+                });
+            }
+            if (detail.username) {
+                document.querySelectorAll('[data-user-username]').forEach(node => {
+                    node.textContent = '@' + detail.username;
+                });
+                document.querySelectorAll('[data-user-initial]').forEach(node => {
+                    node.textContent = detail.username.charAt(0).toUpperCase();
+                });
+            }
+        }
+
+        function updateAvatarTargets(photoUrl) {
+            const hasPhoto = !!photoUrl;
+            document.querySelectorAll('[data-avatar="current-user"]').forEach(img => {
+                if (!img) return;
+                if (hasPhoto) {
+                    img.src = photoUrl;
+                    img.classList.remove('hidden');
+                } else {
+                    img.classList.add('hidden');
+                }
+            });
+            document.querySelectorAll('[data-avatar-fallback="current-user"]').forEach(fallback => {
+                if (!fallback) return;
+                fallback.classList.toggle('hidden', hasPhoto);
+            });
+        }
+
+        function hydrateCurrentUser() {
+            fetch('/users/current-profile', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch current user');
+                    }
+                    return response.json();
+                })
+                .then(payload => {
+                    if (!payload || !payload.success || !payload.user) {
+                        return;
+                    }
+                    const payloadUser = payload.user;
+                    const payloadName = payloadUser.full_name || payloadUser.fullname || '';
+                    if (payloadUser.username) {
+                        currentUsername = payloadUser.username;
+                    }
+                    updateNameTargets({
+                        fullName: payloadName,
+                        username: payloadUser.username
+                    });
+                    updateAvatarTargets(payloadUser.profile_photo_path || '');
+                })
+                .catch(err => {
+                    console.error('Unable to hydrate current user', err);
+                });
+        }
+
+        // Helper to insert HTML and execute inline scripts from fetched fragment
+        function insertFragment(middleColumn, html) {
         const temp = document.createElement('div');
         temp.innerHTML = html;
 
@@ -106,10 +197,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Script execution error:', e);
             }
         });
-    }
+        }
 
-    // Robust loader that requests fragments and runs scripts
-    function loadMiddleColumn(url) {
+        // Robust loader that requests fragments and runs scripts
+        function loadMiddleColumn(url) {
         const middleColumn = document.getElementById('middle-component');
         if (!middleColumn) return;
         middleColumn.innerHTML = ''; // clear first to avoid duplication
@@ -123,13 +214,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 middleColumn.dispatchEvent(new CustomEvent('fragment:loaded'));
             })
             .catch(err => console.error('Failed to load content:', err));
-    }
-    
-    // Make loadMiddleColumn globally accessible
-    window.loadMiddleColumn = loadMiddleColumn;
+        }
+        
+        // Make loadMiddleColumn globally accessible
+        window.loadMiddleColumn = loadMiddleColumn;
 
-    // Handle navigation clicks using delegation
-    document.body.addEventListener('click', (e) => {
+        // Handle navigation clicks using delegation
+        document.body.addEventListener('click', (e) => {
         const nav = e.target.closest && e.target.closest('[data-nav]');
         if (nav) {
             e.preventDefault();
@@ -144,8 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updateNavigationState(action);
 
             if (action === 'profile') {
-                loadMiddleColumn('/profile');
-                history.pushState({}, '', '/profile');
+                const profileUrl = '/profile/' + currentUsername;
+                loadMiddleColumn(profileUrl);
+                history.pushState({}, '', profileUrl);
             } else if (action === 'settings') {
                 loadMiddleColumn('/settings');
                 history.pushState({}, '', '/settings');
@@ -183,10 +275,10 @@ document.addEventListener('DOMContentLoaded', () => {
             updateNavigationState('profile');
             return;
         }
-    });
+        });
 
-    // Handle browser back/forward buttons
-    window.addEventListener('popstate', function() {
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function() {
         const currentPath = window.location.pathname;
         
         if (currentPath.includes('/profile')) {
@@ -205,26 +297,26 @@ document.addEventListener('DOMContentLoaded', () => {
             loadMiddleColumn('/dashboard');
             updateNavigationState('home');
         }
-    });
+        });
 
-    // Modal handlers
-    document.getElementById('logout-cancel')?.addEventListener('click', () => {
+        // Modal handlers
+        document.getElementById('logout-cancel')?.addEventListener('click', () => {
         modal?.classList.add('hidden');
     });
 
-    document.getElementById('logout-confirm')?.addEventListener('click', () => {
+        document.getElementById('logout-confirm')?.addEventListener('click', () => {
         window.location.href = '/logout';
     });
 
-    // Close modal on backdrop click
-    modal?.addEventListener('click', (e) => {
+        // Close modal on backdrop click
+        modal?.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.classList.add('hidden');
         }
     });
 
-    // Function to update navigation state and manage hover behavior
-    function updateNavigationState(activeNav) {
+        // Function to update navigation state and manage hover behavior
+        function updateNavigationState(activeNav) {
         // Remove active state from all links and restore hover behavior
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('bg-blue-500', 'text-white');
@@ -238,10 +330,10 @@ document.addEventListener('DOMContentLoaded', () => {
             activeLink.classList.remove('text-gray-600', 'hover:bg-gray-100');
             activeLink.classList.add('bg-blue-500', 'text-white');
         }
-    }
+        }
 
-    // Initialize navigation state based on current page
-    function initializeNavigationState() {
+        // Initialize navigation state based on current page
+        function initializeNavigationState() {
         const currentPath = window.location.pathname;
         let activeNav = 'home'; // Default to home
 
@@ -255,18 +347,45 @@ document.addEventListener('DOMContentLoaded', () => {
             activeNav = 'search';
         }
 
-        updateNavigationState(activeNav);
-    }
+            updateNavigationState(activeNav);
+        }
 
-    // Initialize navigation state
-    initializeNavigationState();
-
-    // When a fragment loads, allow it to initialize any handlers by listening to event
-    document.getElementById('middle-component')?.addEventListener('fragment:loaded', (e) => {
-        // If the fragment defines a global init function, call it
-        if (typeof window.initSettingsHandlers === 'function') {
-            try { window.initSettingsHandlers(document.getElementById('middle-component')); } catch (err) { console.error(err); }
+        // Listen for updates emitted from the settings panel so UI stays in sync
+        window.addEventListener('user:profile-updated', (event) => {
+        const detail = event.detail || {};
+        if (detail.username) {
+            currentUsername = detail.username;
+        }
+        if (detail.fullName || detail.username) {
+            updateNameTargets(detail);
+        }
+        if (Object.prototype.hasOwnProperty.call(detail, 'photoUrl')) {
+            updateAvatarTargets(detail.photoUrl);
         }
     });
-});
+
+        // Initialize navigation state
+        initializeNavigationState();
+
+        // Immediately hydrate nav + sidebar with authoritative data from backend
+        hydrateCurrentUser();
+
+        // When a fragment loads, allow it to initialize any handlers by listening to event
+        document.getElementById('middle-component')?.addEventListener('fragment:loaded', () => {
+            if (typeof window.initSettingsHandlers === 'function') {
+                try {
+                    window.initSettingsHandlers(document.getElementById('middle-component'));
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLeftSidebar, { once: true });
+    } else {
+        initLeftSidebar();
+    }
+})();
 </script>

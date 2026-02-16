@@ -21,16 +21,26 @@ class DashboardPostsController extends AppController
     {
         $this->request->allowMethod(['post']);
         
+        $this->log("===== Post Create Request Start =====", 'debug');
+        $this->log("Request content type: " . $this->request->contentType(), 'debug');
+        $this->log("Request data: " . json_encode($this->request->getData()), 'debug');
+        $this->log("Request input: " . file_get_contents('php://input'), 'debug');
+        
         $data = $this->getJsonData();
-        $contentText = $data['content_text'] ?? '';
+        $contentText = $data['content_text'] ?? $data['body'] ?? '';
         $location = $data['location'] ?? null;
         $mentions = $data['mentions'] ?? []; // Array of user IDs
-        $media = $data['media'] ?? []; // Array of uploaded media files
+        $media = $data['media'] ?? $data['attachments'] ?? []; // Array of uploaded media files
+        
+        $this->log("Parsed data - contentText: $contentText, location: $location, media count: " . count($media), 'debug');
         
         $identity = $this->request->getAttribute('identity');
         if (!$identity) {
+            $this->log("No identity found - unauthorized", 'error');
             return $this->jsonResponse(['success' => false, 'message' => 'Unauthorized'], 401);
         }
+        
+        $this->log("User ID: " . $identity->id, 'debug');
 
         try {
             $postsTable = $this->fetchTable('Posts');
@@ -47,10 +57,15 @@ class DashboardPostsController extends AppController
             }
             
             if ($postsTable->save($post)) {
+                $this->log("Post saved successfully with ID: " . $post->id, 'debug');
+                
                 // Save mentions
                 if (!empty($mentions)) {
+                    $this->log("Saving mentions: " . json_encode($mentions), 'debug');
                     $this->saveMentions($post->id, $mentions, $identity->id);
                 }
+                
+                $this->log("===== Post Create Request End (Success) =====", 'debug');
                 
                 return $this->jsonResponse([
                     'success' => true,
@@ -58,11 +73,16 @@ class DashboardPostsController extends AppController
                     'post' => [
                         'id' => $post->id,
                         'content_text' => $post->content_text,
+                        'body' => $post->content_text,
                         'location' => $post->location,
                         'created_at' => $post->created_at,
+                        'attachments' => $media
                     ]
                 ]);
             }
+            
+            $this->log("Failed to save post. Errors: " . json_encode($post->getErrors()), 'error');
+            $this->log("===== Post Create Request End (Failed) =====", 'debug');
             
             return $this->jsonResponse([
                 'success' => false,
@@ -70,8 +90,10 @@ class DashboardPostsController extends AppController
                 'errors' => $post->getErrors()
             ], 400);
         } catch (\Exception $e) {
-            error_log('Post create error: ' . $e->getMessage());
-            return $this->jsonResponse(['success' => false, 'message' => 'An error occurred'], 500);
+            $this->log('Post create exception: ' . $e->getMessage(), 'error');
+            $this->log('Stack trace: ' . $e->getTraceAsString(), 'error');
+            $this->log("===== Post Create Request End (Error) =====", 'debug');
+            return $this->jsonResponse(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
 
