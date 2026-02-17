@@ -31,16 +31,29 @@ class DashboardMiddleColumnController extends AppController
             $postsTable = $this->fetchTable('Posts');
             $this->log("Posts table found, building query...", 'debug');
             
+            // Build containments array
+            $contain = [
+                'Users' => function (Query $q) {
+                    return $q->select(['id', 'username', 'full_name', 'profile_photo_path']);
+                },
+                'Reactions' => function (Query $q) {
+                    return $q->select(['id', 'target_id', 'user_id', 'reaction_type']);
+                },
+                'Mentions' => function (Query $q) {
+                    return $q->contain(['MentionedUsers' => function (Query $sub) {
+                        return $sub->select(['id', 'username', 'gender']);
+                    }]);
+                },
+                'PostAttachments' => function (Query $q) {
+                    return $q->select(['id', 'post_id', 'file_path', 'file_type', 'file_size', 'display_order'])
+                        ->where(['upload_status' => 'completed'])
+                        ->orderBy(['display_order' => 'ASC']);
+                }
+            ];
+            
             // Build the query
             $query = $postsTable->find()
-                ->contain([
-                    'Users' => function (Query $q) {
-                        return $q->select(['id', 'username', 'full_name', 'profile_photo_path']);
-                    },
-                    'Reactions' => function (Query $q) {
-                        return $q->select(['id', 'target_id', 'user_id', 'reaction_type']);
-                    }
-                ])
+                ->contain($contain)
                 ->where(['Posts.deleted_at IS' => null]);
 
             // Apply feed filter
@@ -51,8 +64,9 @@ class DashboardMiddleColumnController extends AppController
                 $friendIds = $friendshipsTable->find()
                     ->select(['following_id'])
                     ->where(['follower_id' => $currentUserId])
+                    ->all()
                     ->extract('following_id')
-                    ->toArray();
+                    ->toList();
 
                 $this->log("Found " . count($friendIds) . " friends for user $currentUserId", 'debug');
 
@@ -66,6 +80,20 @@ class DashboardMiddleColumnController extends AppController
                     $query->where(['Posts.user_id' => $currentUserId]);
                     $this->log("No friends found, showing only current user's posts", 'debug');
                 }
+            } elseif ($feed === 'reels') {
+                $this->log("Feed is 'reels', filtering for videos only...", 'debug');
+                // Only show posts with exactly 1 video attachment
+                $query->innerJoin(
+                    ['PostAttachments' => 'post_attachments'],
+                    ['PostAttachments.post_id = Posts.id']
+                )
+                ->where([
+                    'PostAttachments.file_type' => 'video',
+                    'PostAttachments.upload_status' => 'completed'
+                ])
+                ->groupBy(['Posts.id'])
+                ->having(['COUNT(PostAttachments.id) = 1']);
+                $this->log("Filtering for posts with exactly 1 video attachment", 'debug');
             } else {
                 $this->log("Feed is 'foryou' or no user, showing all posts", 'debug');
             }
@@ -74,7 +102,7 @@ class DashboardMiddleColumnController extends AppController
             // Randomize order so results are not sequential from DB.
             // For both 'foryou' (all posts) and 'friends' (followed users),
             // return a random selection to satisfy the UX requirement.
-            $query->order('RAND()')
+            $query->orderBy($query->func()->rand())
                 ->limit($limit)
                 ->offset($start);
 
@@ -90,6 +118,26 @@ class DashboardMiddleColumnController extends AppController
             }
 
             // Process posts to add reaction summary and user's reaction
+            $commentCounts = [];
+            if (!empty($posts)) {
+                $postIds = array_map(fn($p) => $p->id, $posts);
+                $commentsTable = $this->fetchTable('Comments');
+                $countsQuery = $commentsTable->find()
+                    ->select([
+                        'post_id',
+                        'count' => $commentsTable->find()->func()->count('*'),
+                    ])
+                    ->where([
+                        'post_id IN' => $postIds,
+                        'deleted_at IS' => null,
+                    ])
+                    ->groupBy('post_id');
+
+                foreach ($countsQuery as $row) {
+                    $commentCounts[$row->post_id] = (int)$row->count;
+                }
+            }
+
             foreach ($posts as $post) {
                 // Count reactions by type
                 $reactionCounts = [];
@@ -126,6 +174,9 @@ class DashboardMiddleColumnController extends AppController
                         $post->attachments = explode(',', $post->content_image_path);
                     }
                 }
+
+                $post->comments_count = $commentCounts[$post->id] ?? 0;
+                $post->mention_palette = $this->buildMentionPalette($post->mentions ?? []);
             }
         } catch (\Exception $e) {
             $this->log("ERROR loading posts: " . $e->getMessage(), 'error');
@@ -143,5 +194,31 @@ class DashboardMiddleColumnController extends AppController
         $this->log("===== Middle Column Request End =====", 'debug');
         // Render the existing template under templates/MiddleColumn/index.php
         return $this->render('/MiddleColumn/index');
+    }
+
+    private function buildMentionPalette(iterable $mentions): array
+    {
+        $palette = [];
+        foreach ($mentions as $mention) {
+            $user = $mention->mentioned_user ?? $mention->mentioned_user ?? null;
+            if (!$user || empty($user->username)) {
+                continue;
+            }
+            $palette[] = [
+                'username' => $user->username,
+                'color' => $this->mapGenderToColor($user->gender ?? null),
+            ];
+        }
+
+        return $palette;
+    }
+
+    private function mapGenderToColor(?string $gender): string
+    {
+        return match ($gender) {
+            'Male' => 'blue',
+            'Female' => 'pink',
+            default => 'green',
+        };
     }
 }

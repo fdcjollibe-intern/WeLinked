@@ -25,41 +25,156 @@
   function loadComponent(path, containerId, params) {
     let url = path;
     if (params) url += '?' + new URLSearchParams(params).toString();
-    console.debug('Loading component', containerId, 'from', url);
+    console.log('[dashboard.js] 📦 Loading component:', { containerId, url, params });
     return fetch(url, { credentials: 'same-origin' })
-      .then(function (r) { return r.text(); })
+      .then(function (r) { 
+        console.log('[dashboard.js] ✅ Component fetch successful:', { containerId, status: r.status });
+        return r.text(); 
+      })
       .then(function (html) {
         const container = document.getElementById(containerId);
-        if (!container) return;
+        if (!container) {
+          console.error('[dashboard.js] ❌ Container not found:', containerId);
+          return;
+        }
+        console.log('[dashboard.js] 🔄 Inserting HTML into container:', containerId, 'HTML length:', html.length);
         container.innerHTML = '';
         insertHtmlWithScripts(container, html);
+        console.log('[dashboard.js] 🎉 Dispatching fragment:loaded event for:', containerId);
         container.dispatchEvent(new CustomEvent('fragment:loaded', { detail: { path: url, container: containerId } }));
         return html;
       })
       .catch(function (err) {
-        console.error('Failed to load component', containerId, 'from', url, err);
+        console.error('[dashboard.js] ❌ Failed to load component', containerId, 'from', url, err);
+        throw err;
+      });
+  }
+
+  // Load more posts and append to existing posts list (for infinite scroll)
+  function loadMorePosts(start, feed) {
+    const url = '/dashboard/middle-column?' + new URLSearchParams({ start: start, feed: feed }).toString();
+    console.log('[dashboard.js] 📜 Loading more posts:', { start, feed, url });
+    
+    return fetch(url, { credentials: 'same-origin' })
+      .then(function (r) { 
+        console.log('[dashboard.js] ✅ Posts fetch successful:', { status: r.status });
+        return r.text(); 
+      })
+      .then(function (html) {
+        const postsContainer = document.querySelector('#posts-list');
+        if (!postsContainer) {
+          console.warn('[dashboard.js] ⚠️ #posts-list not found - posts may not be loaded yet');
+          return 0;
+        }
+        
+        // Extract just the posts from the HTML (skip composer, etc.)
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        const newPosts = temp.querySelectorAll('#posts-list > .post');
+        
+        console.log('[dashboard.js] 📄 Appending', newPosts.length, 'new posts');
+        
+        let appended = 0;
+        newPosts.forEach(function(post) {
+          postsContainer.appendChild(post.cloneNode(true));
+          appended++;
+        });
+        
+        console.log('[dashboard.js] ✅ Appended', appended, 'posts to feed');
+        return appended;
+      })
+      .catch(function (err) {
+        console.error('[dashboard.js] ❌ Failed to load more posts:', err);
         throw err;
       });
   }
 
   // Load all three components
+  function containerNeedsLoad(el) {
+    if (!el) {
+      console.log('[dashboard.js] containerNeedsLoad: element is null/undefined');
+      return true;
+    }
+    const withoutComments = el.innerHTML.replace(/<!--[\s\S]*?-->/g, '').trim();
+    const needsLoad = withoutComments.length === 0;
+    console.log('[dashboard.js] containerNeedsLoad:', {
+      elementId: el.id,
+      htmlLength: el.innerHTML.length,
+      withoutCommentsLength: withoutComments.length,
+      needsLoad: needsLoad
+    });
+    return needsLoad;
+  }
+
+  function highlightPostFromHash() {
+    const hash = window.location.hash;
+    if (!hash || !hash.startsWith('#post-')) return;
+    const target = document.querySelector(hash);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.classList.add('ring', 'ring-blue-400');
+    setTimeout(() => target.classList.remove('ring', 'ring-blue-400'), 2500);
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
+    console.log('[dashboard.js] ========================================');
+    console.log('[dashboard.js] 📄 DOMContentLoaded event fired');
+    console.log('[dashboard.js] ========================================');
+    
     // Only fetch components if the container is empty. This preserves server-rendered HTML
     const left = document.getElementById('left-component');
     const middle = document.getElementById('middle-component');
     const right = document.getElementById('right-component');
-
-    const needsLoad = (el)=> !el || el.innerHTML.trim().length === 0;
+    
+    console.log('[dashboard.js] 🔍 Container detection:', {
+      left: left ? '✅ exists' : '❌ not found',
+      middle: middle ? '✅ exists' : '❌ not found',
+      right: right ? '✅ exists' : '❌ not found'
+    });
+    
+    const leftNeeds = containerNeedsLoad(left);
+    const middleNeeds = containerNeedsLoad(middle);
+    const rightNeeds = containerNeedsLoad(right);
+    
+    console.log('[dashboard.js] 📊 Container load status:', {
+      leftNeedsLoad: leftNeeds,
+      middleNeedsLoad: middleNeeds,
+      rightNeedsLoad: rightNeeds
+    });
+    
+    if (middle) {
+      console.log('[dashboard.js] 📄 Middle container HTML length:', middle.innerHTML.length);
+      console.log('[dashboard.js] 📄 Middle container HTML preview:', middle.innerHTML.substring(0, 200));
+    }
 
     const promises = [];
-    if (needsLoad(left)) promises.push(loadComponent('/dashboard/left-sidebar', 'left-component'));
-    if (needsLoad(middle)) promises.push(loadComponent('/dashboard/middle-column', 'middle-component'));
-    if (needsLoad(right)) promises.push(loadComponent('/dashboard/right-sidebar', 'right-component'));
+    if (leftNeeds) {
+      console.log('[dashboard.js] 📦 Queueing left-sidebar load');
+      promises.push(loadComponent('/dashboard/left-sidebar', 'left-component'));
+    }
+    if (middleNeeds) {
+      console.log('[dashboard.js] 📦 Queueing middle-column load');
+      promises.push(loadComponent('/dashboard/middle-column', 'middle-component'));
+    }
+    if (rightNeeds) {
+      console.log('[dashboard.js] 📦 Queueing right-sidebar load');
+      promises.push(loadComponent('/dashboard/right-sidebar', 'right-component'));
+    }
+    
+    console.log('[dashboard.js] 🚀 Starting', promises.length, 'component loads...');
 
     Promise.all(promises).then(function(){
+      console.log('[dashboard.js] ✅ All component loads complete');
       // wire interactions whether we loaded via AJAX or used server HTML
-      try { setupInteractions(); } catch(e) { /* ignore */ }
-    }).catch(function(){ try { setupInteractions(); } catch(e){} });
+      try { setupInteractions(); highlightPostFromHash(); } catch(e) { 
+        console.error('[dashboard.js] ❌ setupInteractions error:', e);
+      }
+    }).catch(function(err){ 
+      console.error('[dashboard.js] ❌ Component load error:', err);
+      try { setupInteractions(); } catch(e){
+        console.error('[dashboard.js] ❌ setupInteractions error in catch:', e);
+      }
+    });
   });
 
   function setupInteractions() {
@@ -87,15 +202,26 @@
 
       if (visibleCount >= threshold) {
         loading = true;
-        const start = parseInt(postsContainer.getAttribute('data-start') || '0', 10) + posts.length;
+        // Use posts.length as the next start offset (total posts loaded so far)
+        const start = posts.length;
         const feed = postsContainer.getAttribute('data-feed') || 'friends';
-        loadComponent('/dashboard/middle-column', 'middle-component', { start: start, feed: feed })
-          .then(function () {
-            // update start attribute for next fetch
-            postsContainer.setAttribute('data-start', start);
+        console.log('[dashboard.js] 📜 Infinite scroll triggered:', { currentPosts: posts.length, nextStart: start, feed: feed });
+        
+        loadMorePosts(start, feed)
+          .then(function (appended) {
+            console.log('[dashboard.js] ✅ Infinite scroll complete, appended:', appended);
             loading = false;
+            
+            // If no posts were appended, stop trying to load more
+            if (appended === 0) {
+              console.log('[dashboard.js] 🏁 No more posts available, disabling infinite scroll');
+              window.removeEventListener('scroll', checkAndLoad);
+            }
           })
-          .catch(function () { loading = false; });
+          .catch(function (err) { 
+            console.error('[dashboard.js] ❌ Infinite scroll load failed:', err);
+            loading = false; 
+          });
       }
     }
 
@@ -114,13 +240,28 @@
       if (!tab) return;
       
       const feed = tab.getAttribute('data-feed');
-      if (!feed || feed === 'reels') {
+      if (!feed) {
         e.preventDefault();
         return;
       }
       
       e.preventDefault();
       
+      // Check for unsaved changes before switching
+      if (window.globalHasUnsavedChanges && window.globalShowUnsavedModal) {
+        window.globalShowUnsavedModal().then(function(shouldDiscard) {
+          if (shouldDiscard) {
+            window.globalHasUnsavedChanges = false;
+            switchFeed(tab, feed);
+          }
+        });
+        return;
+      }
+      
+      switchFeed(tab, feed);
+    });
+    
+    function switchFeed(tab, feed) {
       // Update active tab styling
       const allTabs = middleComponent.querySelectorAll('.feed-tab');
       allTabs.forEach(function(t) {
@@ -133,9 +274,15 @@
         .then(function() {
           setupInteractions();
         });
-    });
+    }
   }
 
   // Expose setupInteractions for use after dynamic content loads
   window.setupDashboardInteractions = setupInteractions;
+
+  document.addEventListener('fragment:loaded', function(event){
+    if (event.detail && event.detail.container === 'middle-component') {
+      highlightPostFromHash();
+    }
+  });
 })();

@@ -7,8 +7,12 @@ use Cake\ORM\Entity;
 
 class Reaction extends Entity
 {
-    protected $_accessible = [
-        '*' => true,
-        'id' => false
+    protected array $_accessible = [
+        'target_type' => true,
+        'target_id' => true,
+        'reaction_type' => true,
+        'created_at' => true,
+        'updated_at' => true,
+        'user' => true,
     ];
 }

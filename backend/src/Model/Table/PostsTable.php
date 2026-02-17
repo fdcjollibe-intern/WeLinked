@@ -39,5 +39,15 @@ class PostsTable extends Table
             'foreignKey' => 'post_id',
             'dependent' => true,
         ]);
+
+        $this->hasMany('Comments', [
+            'foreignKey' => 'post_id',
+            'dependent' => true,
+        ]);
+        
+        $this->hasMany('PostAttachments', [
+            'foreignKey' => 'post_id',
+            'dependent' => true,
+        ]);
     }
 }

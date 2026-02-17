@@ -129,6 +129,7 @@ class FriendsController extends AppController
      */
     public function follow()
     {
+        $this->autoRender = false;
         $this->request->allowMethod(['post']);
         $friendshipsTable = $this->fetchTable('Friendships');
         
@@ -139,12 +140,10 @@ class FriendsController extends AppController
         $followingId = (int)($data['user_id'] ?? 0);
         
         if ($followingId === 0 || $followingId === $currentUserId) {
-            $this->set([
+            return $this->response->withType('application/json')->withStatus(400)->withStringBody(json_encode([
                 'success' => false,
                 'message' => 'Invalid user ID'
-            ]);
-            $this->viewBuilder()->setOption('serialize', ['success', 'message']);
-            return;
+            ]));
         }
         
         try {
@@ -179,6 +178,7 @@ class FriendsController extends AppController
      */
     public function unfollow()
     {
+        $this->autoRender = false;
         $this->request->allowMethod(['post']);
         $friendshipsTable = $this->fetchTable('Friendships');
         

@@ -15,14 +15,14 @@ function timeAgo($datetime) {
     if ($diff->d > 0) return $diff->d . ' day' . ($diff->d > 1 ? 's' : '') . ' ago';
     if ($diff->h > 0) return $diff->h . ' hour' . ($diff->h > 1 ? 's' : '') . ' ago';
     if ($diff->i > 0) return $diff->i . ' minute' . ($diff->i > 1 ? 's' : '') . ' ago';
-    return 'just now';
+    return 'Just now';
 }
 
 // Reaction emoji mapping
 $reactionEmojis = [
     'like' => '❤️',
     'haha' => '😆',
-    'love' => '😍',
+    'love' => '🥰',
     'wow' => '😮',
     'sad' => '😢',
     'angry' => '😠'
@@ -38,19 +38,27 @@ $currentFeed = $feed ?? 'friends';
         <div class="flex items-center space-x-4 text-sm" id="feed-tabs">
             <a href="#" class="feed-tab <?= $currentFeed === 'foryou' ? 'text-blue-500 font-medium border-b-2 border-blue-500 pb-1' : 'text-gray-400 hover:text-gray-600' ?>" data-feed="foryou">For You</a>
             <a href="#" class="feed-tab <?= $currentFeed === 'friends' ? 'text-blue-500 font-medium border-b-2 border-blue-500 pb-1' : 'text-gray-400 hover:text-gray-600' ?>" data-feed="friends">Friends</a>
-            <a href="#" class="feed-tab text-gray-400 hover:text-gray-600 opacity-50 cursor-not-allowed" data-feed="reels">Reels</a>
+            <a href="#" class="feed-tab <?= $currentFeed === 'reels' ? 'text-blue-500 font-medium border-b-2 border-blue-500 pb-1' : 'text-gray-400 hover:text-gray-600' ?>" data-feed="reels">Reels</a>
         </div>
     </div>
 
-    <!-- Post Composer -->
-    <div id="post-composer" class="composer bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4 relative">
+    <!-- Post Composer (hidden on Reels feed) -->
+    <?php if ($currentFeed !== 'reels'): ?>
+    <div id="post-composer" class="composer bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4 relative" 
+         data-user-id="<?= h($currentUser->id ?? '') ?>" 
+         data-username="<?= h($currentUser->username ?? '') ?>">
         <div class="flex items-start space-x-3 mb-3">
             <?php 
                 $userInitial = isset($currentUser->username) ? strtoupper(substr($currentUser->username, 0, 1)) : 'Y';
+                $profilePhoto = $currentUser->profile_photo_path ?? '';
             ?>
-            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-sm"><?= $userInitial ?></div>
+            <?php if (!empty($profilePhoto)): ?>
+                <img id="composer-user-photo" src="<?= h($profilePhoto) ?>" alt="Profile" class="w-10 h-10 rounded-full object-cover">
+            <?php else: ?>
+                <div id="composer-user-photo" class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-sm"><?= $userInitial ?></div>
+            <?php endif; ?>
             <div class="flex-1">
-                <textarea id="post-composer-textarea" placeholder="What's on your mind? Use @ to mention friends..." rows="3" class="w-full mt-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-600 placeholder-gray-400 resize-none overflow-y-hidden" style="min-height:72px;max-height:320px;line-height:1.4;transition:height 140ms ease"></textarea>
+                <textarea id="post-composer-textarea" placeholder="What's on your mind? Use @ to mention friends..." rows="3" class="w-full mt-2 bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-600 placeholder-gray-400 resize-none overflow-y-hidden" style="min-height:72px;max-height:320px;line-height:1.4;transition:height 140ms ease"></textarea>
             </div>
         </div>
         <!-- Location Input (initially hidden) -->
@@ -79,16 +87,19 @@ $currentFeed = $feed ?? 'friends';
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                     <span>Video</span>
                 </label>
-                <button id="toggle-location-btn" class="flex items-center space-x-1 text-gray-500 text-sm hover:text-gray-700">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <span>Location</span>
-                </button>
             </div>
-            <button id="post-submit-btn" class="bg-blue-500 text-white px-6 py-2 rounded-full text-sm font-semibold hover:bg-blue-600 transition-colors">Send</button>
+            <button id="post-submit-btn" class="bg-blue-500 text-white px-6 py-2 rounded-full text-sm font-semibold hover:bg-blue-600 transition-colors">Post</button>
         </div>
         <div id="attachment-preview" class="mt-3"></div>
-        <div id="composer-drop-overlay" class="hidden absolute inset-0 bg-white bg-opacity-80 rounded-2xl flex items-center justify-center text-gray-600 text-lg font-medium border-2 border-dashed border-gray-300" style="pointer-events:none">Drop files here to attach</div>
+        <div id="composer-drop-overlay" class="hidden absolute inset-0 bg-blue-50 bg-opacity-95 rounded-2xl flex flex-col items-center justify-center text-blue-600 border-4 border-dashed border-blue-400 z-10" style="pointer-events:none">
+            <svg class="w-16 h-16 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+            <p class="text-lg font-semibold">Drop files here to attach</p>
+            <p class="text-sm text-blue-500 mt-1">Images and videos supported</p>
+        </div>
     </div>
+    <?php endif; ?>
 
     <div id="posts-list" data-start="<?= h($start ?? 0) ?>" data-feed="<?= h($currentFeed) ?>">
         <?php if (!empty($posts)): ?>
@@ -102,6 +113,24 @@ $currentFeed = $feed ?? 'friends';
                     $profilePhoto = $user->profile_photo_path ?? null;
                     $userInitial = strtoupper(substr($username, 0, 1));
                     
+                    // Separate video and image attachments
+                    $videoAttachments = [];
+                    $imageAttachments = [];
+                    if (!empty($post->post_attachments)) {
+                        foreach ($post->post_attachments as $attachment) {
+                            if ($attachment->file_type === 'video') {
+                                $videoAttachments[] = $attachment;
+                            } else {
+                                $imageAttachments[] = $attachment;
+                            }
+                        }
+                    }
+                    
+                    // If no PostAttachments but has old content_image_path, use that
+                    if (empty($imageAttachments) && !empty($attachments)) {
+                        $imageAttachments = $attachments;
+                    }
+                    
                     // Reaction data
                     $reactionCounts = $post->reaction_counts ?? [];
                     $totalReactions = $post->total_reactions ?? 0;
@@ -111,11 +140,11 @@ $currentFeed = $feed ?? 'friends';
                     arsort($reactionCounts);
                     $topReactions = array_slice(array_keys($reactionCounts), 0, 3);
                 ?>
-                <article class="post bg-white rounded-2xl shadow-sm border border-gray-100 p-5" data-index="<?= $idx ?>" data-post-id="<?= h($post->id ?? $idx) ?>">
+                <article class="post bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5" data-index="<?= $idx ?>" data-post-id="<?= h($post->id ?? $idx) ?>">
                     <!-- Post Header -->
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 rounded-full overflow-hidden">
+                            <a href="/profile/<?= h($username) ?>" class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
                                 <?php if ($profilePhoto): ?>
                                     <img src="<?= h($profilePhoto) ?>" alt="<?= h($username) ?>" class="w-full h-full object-cover">
                                 <?php else: ?>
@@ -123,9 +152,11 @@ $currentFeed = $feed ?? 'friends';
                                         <?= h($userInitial) ?>
                                     </div>
                                 <?php endif; ?>
-                            </div>
+                            </a>
                             <div>
-                                <h3 class="font-semibold text-gray-900"><?= h($fullName) ?></h3>
+                                <a href="/profile/<?= h($username) ?>" class="hover:underline">
+                                    <h3 class="font-semibold text-gray-900"><?= h($fullName) ?></h3>
+                                </a>
                                 <p class="text-xs text-gray-400"><?= h(timeAgo($post->created_at)) ?></p>
                             </div>
                         </div>
@@ -151,36 +182,64 @@ $currentFeed = $feed ?? 'friends';
                         </div>
                     <?php endif; ?>
 
+                    <!-- Video Attachments -->
+                    <?php if (!empty($videoAttachments)): ?>
+                        <?php foreach ($videoAttachments as $video): ?>
+                            <div class="post-video mt-3 mb-4 overflow-hidden rounded-xl bg-black relative group">
+                                <video 
+                                    class="w-full h-auto max-h-[600px] object-contain"
+                                    src="<?= h($video->file_path) ?>"
+                                    controls
+                                    preload="metadata"
+                                    playsinline
+                                >
+                                    Your browser does not support the video tag.
+                                </video>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+
                     <!-- Post Images/Attachments -->
-                    <?php if (!empty($attachments)): ?>
+                    <?php if (!empty($imageAttachments)): ?>
                         <div class="post-gallery mt-3 mb-4 overflow-hidden rounded-xl bg-gray-50">
-                            <?php if (count($attachments) === 1): ?>
-                                <img src="<?= h($attachments[0]) ?>" alt="Post image" class="w-full h-auto object-cover">
-                            <?php elseif (count($attachments) === 2): ?>
+                            <?php 
+                            // Normalize attachments to URLs
+                            $imageUrls = [];
+                            foreach ($imageAttachments as $img) {
+                                if (is_object($img) && isset($img->file_path)) {
+                                    $imageUrls[] = $img->file_path;
+                                } elseif (is_string($img)) {
+                                    $imageUrls[] = $img;
+                                }
+                            }
+                            ?>
+                            <?php if (count($imageUrls) === 1): ?>
+                                <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-auto object-cover">
+                            <?php elseif (count($imageUrls) === 2): ?>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <?php foreach ($attachments as $img): ?>
+                                    <?php foreach ($imageUrls as $img): ?>
                                         <img src="<?= h($img) ?>" alt="Post image" class="w-full h-full object-cover">
                                     <?php endforeach; ?>
                                 </div>
-                            <?php elseif (count($attachments) === 3): ?>
+                            <?php elseif (count($imageUrls) === 3): ?>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <img src="<?= h($attachments[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
+                                    <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
                                     <div class="grid grid-rows-2 gap-2">
-                                        <img src="<?= h($attachments[1]) ?>" alt="Post image" class="w-full h-full object-cover">
-                                        <img src="<?= h($attachments[2]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                        <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                        <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover">
                                     </div>
                                 </div>
                             <?php else: ?>
                                 <!-- 4+ photos: show 3 with +N overlay -->
                                 <div class="grid grid-cols-2 gap-2">
-                                    <img src="<?= h($attachments[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
+                                    <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
                                     <div class="grid grid-rows-2 gap-2">
-                                        <img src="<?= h($attachments[1]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                        <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover">
                                         <div class="relative">
-                                            <img src="<?= h($attachments[2]) ?>" alt="Post image" class="w-full h-full object-cover">
-                                            <?php if (count($attachments) > 3): ?>
+                                            <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                            <?php if (count($imageUrls) > 3): ?>
                                                 <div class="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-                                                    <span class="text-white text-2xl font-bold">+<?= count($attachments) - 3 ?></span>
+                                                    <span class="text-white text-2xl font-bold">+<?= count($imageUrls) - 3 ?></span>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -206,8 +265,11 @@ $currentFeed = $feed ?? 'friends';
                         <?php else: ?>
                             <div></div>
                         <?php endif; ?>
-                        <div class="flex items-center space-x-4">
-                            <span class="comments-count">0 comments</span>
+                        <div class="flex items-center space-x-4 mt-2">
+                            <?php $commentTotal = (int)($post->comments_count ?? 0); ?>
+                            <span class="comments-count" data-count="<?= $commentTotal ?>">
+                                <?= h(__n('{0} comment', '{0} comments', $commentTotal, $commentTotal)) ?>
+                            </span>
                             <span class="shares-count">0 shares</span>
                         </div>
                     </div>
@@ -238,7 +300,7 @@ $currentFeed = $feed ?? 'friends';
                 </article>
             <?php endforeach; ?>
         <?php else: ?>
-            <div class="no-posts bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+            <div class="no-posts bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500 ">
                 <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
                 </svg>
@@ -254,5 +316,13 @@ console.debug('[MiddleColumn] Posts list element exists:', !!document.getElement
 console.debug('[MiddleColumn] Composer element exists:', !!document.getElementById('post-composer'));
 console.debug('[MiddleColumn] Post textarea exists:', !!document.getElementById('post-composer-textarea'));
 console.debug('[MiddleColumn] Submit button exists:', !!document.getElementById('post-submit-btn'));
+
+// Initialize middle.js composer immediately when fragment is loaded
+// This ensures the event handlers are attached while the DOM is ready
+if (window.initializeMiddleColumn) {
+    console.log('[MiddleColumn] 🎯 Calling initializeMiddleColumn() directly');
+    window.initializeMiddleColumn();
+} else {
+    console.warn('[MiddleColumn] ⚠️ initializeMiddleColumn not found on window');
+}
 </script>
-<?= $this->Html->script('middle') ?>

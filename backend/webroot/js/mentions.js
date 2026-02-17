@@ -138,7 +138,9 @@ class MentionAutocomplete {
         try {
             this.showLoading();
             
-            const response = await fetch(`/mentions/search?q=${encodeURIComponent(query)}`);
+            const response = await fetch(`/api/mentions/search?q=${encodeURIComponent(query)}`, {
+                credentials: 'same-origin'
+            });
             const data = await response.json();
             
             if (data.success && data.users) {
@@ -146,6 +148,7 @@ class MentionAutocomplete {
                 this.selectedIndex = 0;
                 this.renderResults();
             } else {
+                console.warn('[MentionAutocomplete] Empty response for query', query);
                 this.hideDropdown();
             }
         } catch (error) {

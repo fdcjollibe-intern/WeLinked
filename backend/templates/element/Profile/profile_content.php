@@ -13,12 +13,49 @@
 <?php
 $avatarSizeClass = $isMobileView ? 'w-24 h-24' : 'w-32 h-32';
 $avatarTextClass = $isMobileView ? 'text-3xl' : 'text-5xl';
+
+if (!function_exists('profile_time_ago')) {
+    function profile_time_ago($datetime) {
+        if (!$datetime) {
+            return 'Just now';
+        }
+        $now = new DateTime();
+        $ago = new DateTime($datetime);
+        $diff = $now->diff($ago);
+
+        if ($diff->y > 0) {
+            return $diff->y . ' year' . ($diff->y > 1 ? 's' : '') . ' ago';
+        }
+        if ($diff->m > 0) {
+            return $diff->m . ' month' . ($diff->m > 1 ? 's' : '') . ' ago';
+        }
+        if ($diff->d > 0) {
+            return $diff->d . ' day' . ($diff->d > 1 ? 's' : '') . ' ago';
+        }
+        if ($diff->h > 0) {
+            return $diff->h . ' hour' . ($diff->h > 1 ? 's' : '') . ' ago';
+        }
+        if ($diff->i > 0) {
+            return $diff->i . ' minute' . ($diff->i > 1 ? 's' : '') . ' ago';
+        }
+        return 'Just now';
+    }
+}
+
+$reactionEmojis = [
+    'like' => '❤️',
+    'haha' => '😆',
+    'love' => '😍',
+    'wow' => '😮',
+    'sad' => '😢',
+    'angry' => '😠',
+];
 ?>
 <!-- Profile Section -->
 <section class="profile-section" data-profile-user-id="<?= (int) $user->id ?>">
     <!-- Profile Header Card -->
-    <article class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-4">
-        <div class="flex <?= $isMobileView ? 'flex-col items-center text-center' : 'items-start' ?> gap-6">
+    <article class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 pl-11 mb-4">
+        <div class="flex <?= $isMobileView ? 'items-start text-left' : 'items-start' ?> gap-6">
             <!-- Avatar -->
             <div class="flex-shrink-0">
                 <?php if (!empty($user->profile_photo_path)): ?>
@@ -40,21 +77,55 @@ $avatarTextClass = $isMobileView ? 'text-3xl' : 'text-5xl';
             
             <!-- Profile Info -->
             <div class="flex-1">
-                <div class="flex <?= $isMobileView ? 'flex-col' : 'items-center' ?> gap-4 mb-1">
-                    <h1 class="text-2xl font-semibold text-gray-900" data-profile-username><?= h($user->username) ?></h1>
-                    <?php if ($identity->id === $user->id): ?>
-                        <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors">
+                <div class="flex <?= $isMobileView ? 'flex-col' : 'items-center' ?> gap-4 mb-1 pt-1">
+                    <h1 class="<?= $isMobileView ? 'text-xl' : 'text-2xl' ?> font-extrabold text-gray-900" data-profile-username><?= h($user->full_name) ?></h1>
+                    <?php if ($identity->id === $user->id && !$isMobileView): ?>
+                        <button data-action="edit-profile" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors">
                             Edit Profile
                         </button>
                     <?php endif; ?>
                 </div>
-                <!-- Bio -->
-                <div class="text-gray-600 font-medium m">
-                    <div class="font-semibold" data-profile-full-name><?= h($user->full_name) ?></div>
+                <!-- username -->
+                <div class="text-gray-600 mb-2 pr-12">
+                    <div class="text-sm" data-profile-full-name>@<?= h($user->username) ?></div>
                 </div>
                 
+
+            <!-- bio  -->
+                <?php if (!empty($user->bio)): ?>
+                <div class="text-gray-700 mb-2 pr-12" id="bio-container">
+                    <div data-profile-bio><?= h($user->bio) ?></div>
+                </div>
+                <?php else: ?>
+                <div class="text-gray-700 mb-2 pr-12" id="bio-container" style="display: none;">
+                    <div data-profile-bio></div>
+                </div>
+                <?php endif; ?>
+
+            <!-- website -->
+                <?php if (!empty($user->website)): ?>
+                <div class="text-blue-600 mb-2" id="website-container">
+                    <a href="<?= h($user->website) ?>" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1 hover:underline" data-profile-website-link>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                        </svg>
+                        <span data-profile-website><?= h($user->website) ?></span>
+                    </a>
+                </div>
+                <?php else: ?>
+                <div class="text-blue-600 mb-2" id="website-container" style="display: none;">
+                    <a href="#" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1 hover:underline" data-profile-website-link>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                        </svg>
+                        <span data-profile-website></span>
+                    </a>
+                </div>
+                <?php endif; ?>
+
+
                 <!-- Stats -->
-                <div class="flex <?= $isMobileView ? 'justify-center' : '' ?> gap-6 mb-3">
+                <div class="flex <?= $isMobileView ? 'justify-start' : '' ?> gap-6 mb-3">
                     <div>
                         <span class="font-semibold text-gray-900"><?= number_format($postCount) ?></span>
                         <span class="text-gray-600 text-sm ml-1">posts</span>
@@ -73,9 +144,206 @@ $avatarTextClass = $isMobileView ? 'text-3xl' : 'text-5xl';
     </article>
     
     <!-- Posts Section -->
-    <article class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Posts</h2>
-        <?php if ($postCount > 0): ?>
+
+        <?php if (!empty($posts)): ?>
+            <div class="space-y-6">
+                <?php foreach ($posts as $index => $post): ?>
+                    <?php
+                        $postUser = $post->user ?? $user;
+                        $postUsername = $postUser->username ?? 'unknown';
+                        $postFullName = $postUser->full_name ?? $postUsername;
+                        $postPhoto = $postUser->profile_photo_path ?? null;
+                        $postInitial = strtoupper(substr($postUsername, 0, 1));
+                        
+                        // Separate video and image attachments
+                        $videoAttachments = [];
+                        $imageAttachments = [];
+                        
+                        // Check post_attachments relationship first
+                        if (!empty($post->post_attachments)) {
+                            foreach ($post->post_attachments as $attachment) {
+                                if ($attachment->file_type === 'video') {
+                                    $videoAttachments[] = $attachment;
+                                } else {
+                                    $imageAttachments[] = $attachment;
+                                }
+                            }
+                        }
+                        
+                        // Fallback to old attachments array if no PostAttachments
+                        if (empty($imageAttachments) && empty($videoAttachments)) {
+                            foreach (($post->attachments ?? []) as $attachment) {
+                                if (is_string($attachment) && $attachment !== '') {
+                                    $imageAttachments[] = $attachment;
+                                    continue;
+                                }
+                                if (is_array($attachment) && !empty($attachment['url'])) {
+                                    $imageAttachments[] = $attachment['url'];
+                                }
+                            }
+                        }
+                        
+                        $reactionCounts = $post->reaction_counts ?? [];
+                        arsort($reactionCounts);
+                        $topReactions = array_slice(array_keys($reactionCounts), 0, 3);
+                        $totalReactions = $post->total_reactions ?? 0;
+                        $commentTotal = (int)($post->comments_count ?? 0);
+                        $userReaction = $post->user_reaction ?? '';
+                    ?>
+                    <article class="post bg-white rounded-2xl shadow-sm border border-gray-100 p-5" data-index="<?= $index + 1 ?>" data-post-id="<?= h($post->id ?? ($index + 1)) ?>">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full overflow-hidden">
+                                    <?php if ($postPhoto): ?>
+                                        <img src="<?= h($postPhoto) ?>" alt="<?= h($postUsername) ?>" class="w-full h-full object-cover">
+                                    <?php else: ?>
+                                        <div class="w-full h-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                                            <?= h($postInitial) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-900"><?= h($postFullName) ?></h3>
+                                    <p class="text-xs text-gray-400"><?= h(profile_time_ago($post->created_at)) ?></p>
+                                </div>
+                            </div>
+                            <button class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <?php if (!empty($post->content_text)): ?>
+                            <p class="text-gray-700 mb-4"><?= nl2br(h($post->content_text)) ?></p>
+                        <?php endif; ?>
+
+                        <?php if (!empty($post->location)): ?>
+                            <div class="flex items-center space-x-1 text-sm text-gray-500 mb-3">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                <span><?= h($post->location) ?></span>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Video Attachments -->
+                        <?php if (!empty($videoAttachments)): ?>
+                            <?php foreach ($videoAttachments as $video): ?>
+                                <div class="post-video mt-3 mb-4 overflow-hidden rounded-xl bg-black">
+                                    <video 
+                                        class="w-full h-auto max-h-[600px] object-contain"
+                                        src="<?= h($video->file_path) ?>"
+                                        controls
+                                        preload="metadata"
+                                        playsinline
+                                    >
+                                        Your browser does not support the video tag.
+                                    </video>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                        <?php if (!empty($imageAttachments)): ?>
+                            <?php 
+                            // Normalize attachments to URLs
+                            $imageUrls = [];
+                            foreach ($imageAttachments as $img) {
+                                if (is_object($img) && isset($img->file_path)) {
+                                    $imageUrls[] = $img->file_path;
+                                } elseif (is_string($img)) {
+                                    $imageUrls[] = $img;
+                                }
+                            }
+                            ?>
+                            <div class="post-gallery mt-3 mb-4 overflow-hidden rounded-xl bg-gray-50">
+                                <?php if (count($imageUrls) === 1): ?>
+                                    <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-auto object-cover">
+                                <?php elseif (count($imageUrls) === 2): ?>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <?php foreach ($imageUrls as $img): ?>
+                                            <img src="<?= h($img) ?>" alt="Post image" class="w-full h-full object-cover">
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php elseif (count($imageUrls) === 3): ?>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
+                                        <div class="grid grid-rows-2 gap-2">
+                                            <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                            <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
+                                        <div class="grid grid-rows-2 gap-2">
+                                            <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                            <div class="relative">
+                                                <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                                <?php if (count($imageUrls) > 3): ?>
+                                                    <div class="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                                                        <span class="text-white text-2xl font-bold">+<?= count($imageUrls) - 3 ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-2 px-1">
+                            <?php if ($totalReactions > 0): ?>
+                                <div class="flex items-center space-x-1 reaction-summary" data-total="<?= (int)$totalReactions ?>">
+                                    <span class="reaction-emojis" style="display:flex;align-items:center">
+                                        <?php foreach ($topReactions as $reactionKeyIndex => $reactionKey): ?>
+                                            <?php if (isset($reactionEmojis[$reactionKey])): ?>
+                                                <span class="reaction-emoji" style="display:inline-block;<?= $reactionKeyIndex > 0 ? 'margin-left:-4px;' : '' ?>position:relative;z-index:<?= 3 - $reactionKeyIndex ?>;text-shadow:-1px -1px 0 white,1px -1px 0 white,-1px 1px 0 white,1px 1px 0 white,0 -1px 0 white,0 1px 0 white,-1px 0 0 white,1px 0 0 white">
+                                                    <?= $reactionEmojis[$reactionKey] ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </span>
+                                    <span class="reaction-count"><?= (int)$totalReactions ?></span>
+                                </div>
+                            <?php else: ?>
+                                <div></div>
+                            <?php endif; ?>
+                            <div class="flex items-center space-x-4">
+                                <span class="comments-count" data-count="<?= $commentTotal ?>">
+                                    <?= h(__n('{0} comment', '{0} comments', $commentTotal, $commentTotal)) ?>
+                                </span>
+                                <span class="shares-count">0 shares</span>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-gray-100 pt-2 flex items-center justify-around">
+                            <button class="reaction-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors" data-user-reaction="<?= h($userReaction) ?>">
+                                <svg class="like-icon w-5 h-5 <?= $userReaction ? 'text-red-500 fill-current' : 'text-gray-500' ?>" fill="<?= $userReaction ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                </svg>
+                                <span class="reaction-label text-sm font-medium <?= $userReaction ? 'text-red-500' : 'text-gray-700' ?>">
+                                    <?= $userReaction ? ucfirst($userReaction) : 'Like' ?>
+                                </span>
+                            </button>
+                            <button class="comment-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                                <span class="text-sm font-medium text-gray-700">Comment</span>
+                            </button>
+                            <button class="share-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                                </svg>
+                                <span class="text-sm font-medium text-gray-700">Share</span>
+                            </button>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php elseif ($postCount > 0): ?>
             <div class="text-gray-600 text-sm">Posts will appear here</div>
         <?php else: ?>
             <div class="text-center py-8">
@@ -86,7 +354,6 @@ $avatarTextClass = $isMobileView ? 'text-3xl' : 'text-5xl';
                 <p class="text-gray-600">No posts yet</p>
             </div>
         <?php endif; ?>
-    </article>
 </section>
 
 <!-- Followers/Following Modal -->
@@ -152,6 +419,25 @@ $avatarTextClass = $isMobileView ? 'text-3xl' : 'text-5xl';
             body: JSON.stringify(payload),
         };
     }
+
+    // Ensure GIF avatars autoplay on the profile page by forcing a fresh load
+    (function ensureGifAvatarPlays() {
+        if (!profileRoot) return;
+        try {
+            const avatarNode = profileRoot.querySelector('[data-profile-avatar]');
+            if (!avatarNode) return;
+            if (avatarNode.tagName === 'IMG') {
+                const src = avatarNode.getAttribute('src') || '';
+                if (/\.gif(\?|$)/i.test(src)) {
+                    // Force reload with cache-busting query so animation starts
+                    const base = src.split('?')[0];
+                    avatarNode.src = base + '?_=' + Date.now();
+                }
+            }
+        } catch (err) {
+            console.error('ensureGifAvatarPlays error', err);
+        }
+    })();
 
     function modalInitial(value) {
         return (value || '?').trim().charAt(0).toUpperCase() || '?';
@@ -485,3 +771,15 @@ $avatarTextClass = $isMobileView ? 'text-3xl' : 'text-5xl';
     }
 })();
 </script>
+
+<?php if ($identity->id === $user->id): ?>
+    <?= $this->element('Profile/edit_profile_modal', ['user' => $user]) ?>
+<?php endif; ?>
+
+<?php if ($identity->id === $user->id && $isMobileView): ?>
+    <div class="px-4 mt-3 md:hidden">
+        <button data-action="edit-profile" class="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors">
+            Edit Profile
+        </button>
+    </div>
+<?php endif; ?>

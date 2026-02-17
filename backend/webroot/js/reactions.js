@@ -1,5 +1,6 @@
 // reactions.js — Enhanced reaction system with hover/long-press, fill states, and compact number formatting
 (function(){
+  const csrfToken = window.csrfToken || document.querySelector('meta[name="csrfToken"]')?.content || '';
   const EMOJIS = [
     {key:'like', emoji:'❤️', src:'/assets/reactions/like.webm', label:'Like', color:'#f91880'},
     {key:'love', emoji:'🥰', src:'/assets/reactions/loveit.webm', label:'Love', color:'#f33e5b'},
@@ -8,6 +9,7 @@
     {key:'sad', emoji:'😢', src:'/assets/reactions/sad.webm', label:'Sad', color:'#5890ff'},
     {key:'angry', emoji:'😡', src:'/assets/reactions/angry.webm', label:'Angry', color:'#e9710f'}
   ];
+  const HEART_SVG = '<svg class="like-icon w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>';
 
   // Format numbers: 120, 1k, 120k, 2.1m
   function formatCount(n) {
@@ -16,14 +18,25 @@
     return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1).replace(/\.0$/, '') + 'm';
   }
 
+  function ensureHeartIcon(btn) {
+    let icon = btn.querySelector('.like-icon');
+    if (!icon) {
+      btn.insertAdjacentHTML('afterbegin', HEART_SVG);
+      icon = btn.querySelector('.like-icon');
+    }
+    return icon;
+  }
+
   // Update reaction button state based on user's reaction
   function updateButtonState(btn, reactionKey) {
-    const icon = btn.querySelector('.like-icon');
+    const icon = ensureHeartIcon(btn);
     const label = btn.querySelector('.reaction-label');
-    if (!icon || !label) return;
+    if (!label) return;
+    const emojiBadge = btn.querySelector('.reaction-emoji-active');
 
     if (!reactionKey || reactionKey === '') {
-      // No reaction - show outline heart
+      if (emojiBadge) emojiBadge.remove();
+      icon.style.display = '';
       icon.setAttribute('fill', 'none');
       icon.setAttribute('stroke', 'currentColor');
       icon.classList.remove('text-red-500');
@@ -32,26 +45,35 @@
       label.classList.remove('text-red-500');
       label.classList.add('text-gray-700');
       btn.dataset.userReaction = '';
-    } else {
-      const reaction = EMOJIS.find(e => e.key === reactionKey);
-      if (reaction) {
-        // Show filled/colored state based on reaction type
-        if (reactionKey === 'like') {
-          // Red filled heart for Like
-          icon.setAttribute('fill', 'currentColor');
-          icon.setAttribute('stroke', 'none');
-          icon.classList.remove('text-gray-500');
-          icon.classList.add('text-red-500');
-          label.classList.remove('text-gray-700');
-          label.classList.add('text-red-500');
-        } else {
-          // Replace with emoji for other reactions
-          icon.outerHTML = `<span class="text-xl leading-none">${reaction.emoji}</span>`;
-        }
-        label.textContent = reaction.label;
-        btn.dataset.userReaction = reactionKey;
-      }
+      return;
     }
+
+    const reaction = EMOJIS.find(e => e.key === reactionKey);
+    if (!reaction) return;
+
+    if (reactionKey === 'like') {
+      if (emojiBadge) emojiBadge.remove();
+      icon.style.display = '';
+      icon.setAttribute('fill', 'currentColor');
+      icon.setAttribute('stroke', 'none');
+      icon.classList.remove('text-gray-500');
+      icon.classList.add('text-red-500');
+      label.classList.remove('text-gray-700');
+      label.classList.add('text-red-500');
+    } else {
+      icon.style.display = 'none';
+      let badge = emojiBadge;
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'reaction-emoji-active text-xl leading-none mr-1';
+        btn.insertBefore(badge, label);
+      }
+      badge.textContent = reaction.emoji;
+      label.classList.remove('text-red-500');
+      label.classList.add('text-gray-700');
+    }
+    label.textContent = reaction.label;
+    btn.dataset.userReaction = reactionKey;
   }
 
   // Update reaction summary display
@@ -146,119 +168,180 @@
     picker.querySelectorAll('video').forEach(v => { v.pause(); v.currentTime = 0; });
   }
 
-  function showPicker(picker, x, y, postEl) {
+  function showPicker(picker, x, y, element, btn) {
     picker.style.left = x + 'px';
     picker.style.top = y + 'px';
     picker.style.visibility = 'visible';
     picker.style.pointerEvents = 'auto';
-    picker._postEl = postEl;
+    picker._element = element;
+    picker._btn = btn;
     // Play all videos when picker opens
     picker.querySelectorAll('video').forEach(v => v.play());
   }
 
-  function performReaction(postEl, reactionKey) {
-    const postId = postEl.dataset.postId;
-    const btn = postEl.querySelector('.reaction-btn');
-    if (!btn) return;
+  function performReaction(element, reactionKey, btn) {
+    // Check if it's a comment or post
+    const isComment = element.classList.contains('comment-item');
+    const targetType = isComment ? 'comment' : 'post';
+    const targetId = isComment ? element.dataset.commentId : element.dataset.postId;
+    
+    if (!btn) {
+      btn = element.querySelector(isComment ? '.comment-reaction-btn' : '.reaction-btn');
+    }
+    if (!btn || !targetId) return;
 
     const currentReaction = btn.dataset.userReaction || '';
-    
-    // Toggle: if same reaction, remove it
-    const finalReaction = (currentReaction === reactionKey) ? '' : reactionKey;
+    const togglingOff = currentReaction === reactionKey;
 
-    // Optimistic update for button
-    updateButtonState(btn, finalReaction);
+    updateButtonState(btn, togglingOff ? '' : reactionKey);
 
-    // Send to server
-    if (!postId) return;
+    console.log('[reactions.js] Performing reaction:', {
+      targetType,
+      targetId,
+      reactionKey,
+      currentReaction,
+      togglingOff
+    });
     
     fetch('/dashboard/posts/react', {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
       body: JSON.stringify({ 
-        target_type: 'post', 
-        target_id: postId, 
-        reaction_type: finalReaction 
+        target_type: targetType, 
+        target_id: targetId, 
+        reaction_type: reactionKey 
       })
     })
-    .then(r => r.json())
+    .then(r => {
+      console.log('[reactions.js] Response status:', r.status);
+      return r.json();
+    })
     .then(json => {
+      console.log('[reactions.js] Response data:', json);
       if (json && json.success) {
         // Update button state with server response
         updateButtonState(btn, json.user_reaction || '');
-        // Update reaction summary with counts from server
-        updateReactionSummary(postEl, json.counts || {}, json.user_reaction);
+        // Update reaction summary for posts
+        if (!isComment) {
+          updateReactionSummary(element, json.counts || {}, json.user_reaction);
+        } else {
+          // Update reaction count for comments
+          updateCommentReactionCount(btn, json.counts || {});
+        }
+      } else {
+        console.error('[reactions.js] Reaction failed:', json);
+        alert('Failed to save reaction: ' + (json.error || json.message || 'Unknown error'));
+        updateButtonState(btn, currentReaction);
       }
     })
-    .catch(() => {
-      // On error, revert optimistic update
+    .catch(err => {
+      console.error('[reactions.js] Reaction error:', err);
+      alert('Error sending reaction: ' + err.message);
       updateButtonState(btn, currentReaction);
+    });
+  }
+  
+  function updateCommentReactionCount(btn, counts) {
+    if (!btn) return;
+    const countEl = btn.querySelector('.reaction-count');
+    if (!countEl) return;
+    const total = Object.values(counts).reduce((sum, val) => sum + val, 0);
+    if (total > 0) {
+      countEl.textContent = total;
+      countEl.dataset.count = total;
+      countEl.style.display = '';
+    } else {
+      countEl.textContent = '0';
+      countEl.dataset.count = '0';
+      countEl.style.display = 'none';
+    }
+  }
+
+  // Initialize reaction buttons on page load
+  function initializeReactionButtons() {
+    console.log('[reactions.js] Initializing reaction buttons on page load');
+    document.querySelectorAll('.post').forEach(post => {
+      const btn = post.querySelector('.reaction-btn');
+      if (!btn) return;
+      
+      const userReaction = btn.dataset.userReaction || '';
+      if (userReaction) {
+        console.log('[reactions.js] Setting initial state for post', post.dataset.postId, ':', userReaction);
+        updateButtonState(btn, userReaction);
+      }
     });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     const picker = createPicker();
+    
+    // Initialize existing posts
+    initializeReactionButtons();
     let hoverTimer = null;
     let longPressTimer = null;
     let isDragging = false;
 
-    // Desktop: hover to show picker after 800ms
+    // Desktop: hover to show picker after 800ms (for both posts and comments)
     document.body.addEventListener('mouseover', (e) => {
-      const btn = e.target.closest('.reaction-btn');
+      const btn = e.target.closest('.reaction-btn, .comment-reaction-btn');
       if (btn && !('ontouchstart' in window)) {
-        const postEl = btn.closest('.post');
-        if (!postEl) return;
+        const postOrComment = btn.closest('.post, .comment-item');
+        if (!postOrComment) return;
+        
         hoverTimer = setTimeout(() => {
           const rect = btn.getBoundingClientRect();
           const x = rect.left + (rect.width / 2) - 250;
           const y = rect.top - 90;
-          showPicker(picker, Math.max(10, x), Math.max(10, y), postEl);
+          showPicker(picker, Math.max(10, x), Math.max(10, y), postOrComment, btn);
         }, 800);
       }
     });
 
     document.body.addEventListener('mouseout', (e) => {
-      const btn = e.target.closest('.reaction-btn');
+      const btn = e.target.closest('.reaction-btn, .comment-reaction-btn');
       if (btn) clearTimeout(hoverTimer);
     });
 
     // Desktop: click reaction in picker
     picker.addEventListener('click', (e) => {
       const reactionBtn = e.target.closest('[data-reaction-key]');
-      if (reactionBtn && picker._postEl) {
+      if (reactionBtn && picker._element) {
         const key = reactionBtn.dataset.reactionKey;
-        performReaction(picker._postEl, key);
+        performReaction(picker._element, key, picker._btn);
         hidePicker(picker);
       }
     });
 
     // Desktop: quick like on button click (when picker not visible)
     document.body.addEventListener('click', (e) => {
-      const btn = e.target.closest('.reaction-btn');
+      const btn = e.target.closest('.reaction-btn, .comment-reaction-btn');
       if (btn && picker.style.visibility === 'hidden') {
-        const postEl = btn.closest('.post');
-        if (postEl) performReaction(postEl, 'like');
+        const element = btn.closest('.post, .comment-item');
+        if (element) performReaction(element, 'like', btn);
       }
       
       // Hide picker if clicking outside
-      if (!e.target.closest('.reaction-picker') && !e.target.closest('.reaction-btn')) {
+      if (!e.target.closest('.reaction-picker') && !e.target.closest('.reaction-btn, .comment-reaction-btn')) {
         hidePicker(picker);
       }
     });
 
     // Mobile: long-press to show picker
     document.body.addEventListener('touchstart', (e) => {
-      const btn = e.target.closest('.reaction-btn');
+      const btn = e.target.closest('.reaction-btn, .comment-reaction-btn');
       if (btn) {
-        const postEl = btn.closest('.post');
-        if (!postEl) return;
+        const element = btn.closest('.post, .comment-item');
+        if (!element) return;
         
         longPressTimer = setTimeout(() => {
           const rect = btn.getBoundingClientRect();
           const x = rect.left + (rect.width / 2) - 250;
           const y = rect.top - 90;
-          showPicker(picker, Math.max(10, x), Math.max(10, y), postEl);
+          showPicker(picker, Math.max(10, x), Math.max(10, y), element, btn);
           isDragging = true;
         }, 500);
       }
@@ -273,17 +356,17 @@
         const touch = e.changedTouches[0];
         const el = document.elementFromPoint(touch.clientX, touch.clientY);
         const reactionBtn = el && el.closest('[data-reaction-key]');
-        if (reactionBtn && picker._postEl) {
+        if (reactionBtn && picker._element) {
           const key = reactionBtn.dataset.reactionKey;
-          performReaction(picker._postEl, key);
+          performReaction(picker._element, key, picker._btn);
         }
         hidePicker(picker);
       } else {
         // Quick tap = like
-        const btn = e.target.closest('.reaction-btn');
+        const btn = e.target.closest('.reaction-btn, .comment-reaction-btn');
         if (btn && picker.style.visibility === 'hidden') {
-          const postEl = btn.closest('.post');
-          if (postEl) performReaction(postEl, 'like');
+          const element = btn.closest('.post, .comment-item');
+          if (element) performReaction(element, 'like', btn);
         }
       }
     }, { passive: true });

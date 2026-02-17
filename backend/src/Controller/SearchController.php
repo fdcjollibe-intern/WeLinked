@@ -30,15 +30,22 @@ class SearchController extends AppController
             }
         }
         
-        // If requested via AJAX, return only the middle column
-        if ($this->request->is('ajax') || $this->request->getQuery('partial')) {
+        // Get current user for template
+        $currentUser = $this->request->getAttribute('identity');
+        if (!$currentUser) {
+            $currentUser = (object)['username' => 'Guest', 'full_name' => 'Guest User'];
+        }
+        
+        // If requested via AJAX for middle column fragment, disable layout
+        if ($this->request->getQuery('fragment') === 'middle') {
             $this->viewBuilder()->disableAutoLayout();
-            $this->set(compact('query', 'type', 'results'));
+            $this->set(compact('query', 'type', 'results', 'currentUser'));
             $this->render('/Search/index');
             return;
         }
         
-        $this->set(compact('query', 'type', 'results'));
+        // Default: use default layout (which is already set)
+        $this->set(compact('query', 'type', 'results', 'currentUser'));
     }
 
     /**
@@ -47,7 +54,7 @@ class SearchController extends AppController
      * @return \Cake\Http\Response|null JSON response
      */
     public function suggest()
-    {
+    {        $this->autoRender = false;
         $this->request->allowMethod(['get']);
         
         $query = $this->request->getQuery('q', '');
@@ -55,12 +62,12 @@ class SearchController extends AppController
         $limit = (int)($this->request->getQuery('limit') ?? 5);
         
         if (empty($query)) {
-            $this->set([
-                'success' => true,
-                'results' => []
-            ]);
-            $this->viewBuilder()->setOption('serialize', ['success', 'results']);
-            return;
+            return $this->response
+                ->withType('application/json')
+                ->withStringBody(json_encode([
+                    'success' => true,
+                    'results' => []
+                ]));
         }
         
         $results = [];
@@ -70,11 +77,12 @@ class SearchController extends AppController
             $results = $this->searchUsers($query, $limit);
         }
         
-        $this->set([
-            'success' => true,
-            'results' => $results
-        ]);
-        $this->viewBuilder()->setOption('serialize', ['success', 'results']);
+        return $this->response
+            ->withType('application/json')
+            ->withStringBody(json_encode([
+                'success' => true,
+                'results' => $results
+            ]));
     }
 
     /**
@@ -149,11 +157,23 @@ class SearchController extends AppController
     {
         $postsTable = $this->fetchTable('Posts');
         
+        $identity = $this->request->getAttribute('identity');
+        $currentUserId = $identity->id ?? $identity['id'];
+        
         // Search in post content_text and location
         $posts = $postsTable->find()
-            ->contain(['Users' => function ($q) {
-                return $q->select(['id', 'username', 'full_name', 'profile_photo_path']);
-            }])
+            ->contain([
+                'Users' => function ($q) {
+                    return $q->select(['id', 'username', 'full_name', 'profile_photo_path']);
+                },
+                'Reactions',
+                'PostAttachments',
+                'Mentions' => [
+                    'Users' => function ($q) {
+                        return $q->select(['id', 'username', 'full_name']);
+                    }
+                ]
+            ])
             ->where(['Posts.deleted_at IS' => null])
             ->where([
                 'OR' => [
@@ -174,10 +194,61 @@ class SearchController extends AppController
             ->limit($limit)
             ->toArray();
         
+        // Fetch comment counts for all posts
+        $commentCounts = [];
+        if (!empty($posts)) {
+            $postIds = array_map(fn($p) => $p->id, $posts);
+            $commentsTable = $this->fetchTable('Comments');
+            $countsQuery = $commentsTable->find()
+                ->select([
+                    'post_id',
+                    'count' => $commentsTable->find()->func()->count('*'),
+                ])
+                ->where([
+                    'post_id IN' => $postIds,
+                    'deleted_at IS' => null,
+                ])
+                ->groupBy('post_id');
+
+            foreach ($countsQuery as $row) {
+                $commentCounts[$row->post_id] = (int)$row->count;
+            }
+        }
+        
         $results = [];
         foreach ($posts as $post) {
             // Highlight the search term in content
             $highlightedContent = $this->highlightSearchTerm($post->content_text, $query);
+            
+            // Count reactions by type
+            $reactionCounts = [];
+            $userReaction = null;
+            
+            if (!empty($post->reactions)) {
+                foreach ($post->reactions as $reaction) {
+                    $type = $reaction->reaction_type;
+                    if (!isset($reactionCounts[$type])) {
+                        $reactionCounts[$type] = 0;
+                    }
+                    $reactionCounts[$type]++;
+                    
+                    // Check if current user has reacted
+                    if ($currentUserId && $reaction->user_id == $currentUserId) {
+                        $userReaction = $type;
+                    }
+                }
+            }
+            
+            // Parse attachments for legacy posts
+            $attachments = [];
+            if (!empty($post->content_image_path)) {
+                $decoded = json_decode($post->content_image_path, true);
+                if (is_array($decoded)) {
+                    $attachments = $decoded;
+                } else {
+                    $attachments = explode(',', $post->content_image_path);
+                }
+            }
             
             $results[] = [
                 'id' => $post->id,
@@ -186,6 +257,12 @@ class SearchController extends AppController
                 'location' => $post->location,
                 'content_image_path' => $post->content_image_path,
                 'created_at' => $post->created_at,
+                'reaction_counts' => $reactionCounts,
+                'user_reaction' => $userReaction,
+                'total_reactions' => array_sum($reactionCounts),
+                'comments_count' => $commentCounts[$post->id] ?? 0,
+                'attachments' => $attachments,
+                'post_attachments' => $post->post_attachments ?? [],
                 'user' => [
                     'id' => $post->user->id,
                     'username' => $post->user->username,

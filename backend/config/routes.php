@@ -10,6 +10,8 @@ return function (RouteBuilder $routes): void {
     $routes->scope('/', function (RouteBuilder $builder): void {
       
         // Profile routes FIRST before fallbacks to ensure usernames map correctly
+        $builder->connect('/profile/update', ['controller' => 'Profile', 'action' => 'update'])
+            ->setMethods(['POST']);
         $builder->connect('/profile', ['controller' => 'Profile', 'action' => 'index', '_name' => 'profile_own']);
         $builder->connect('/profile/{username}/followers', ['controller' => 'Profile', 'action' => 'followers', '_name' => 'profile_followers'])
             ->setPass(['username'])
@@ -40,6 +42,9 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/logout', ['controller' => 'Login', 'action' => 'logout']);
         $builder->connect('/dashboard', ['controller' => 'Dashboard', 'action' => 'index']);
         
+        // Reels - short-form vertical videos
+        $builder->connect('/reels', ['controller' => 'Reels', 'action' => 'index']);
+        
         // Settings
         $builder->connect('/settings', ['controller' => 'Settings', 'action' => 'index']);
         $builder->connect('/settings/update-account', ['controller' => 'Settings', 'action' => 'updateAccount']);
@@ -60,7 +65,12 @@ return function (RouteBuilder $routes): void {
         $builder->redirect('/right-sidebar', '/dashboard/right-sidebar', ['status' => 301]);
 
         // Upload endpoint for attachments (POST). Query param `type` = post|comment
-        $builder->connect('/dashboard/upload', ['controller' => 'DashboardUploads', 'action' => 'upload']);
+        // DELETE requests to /dashboard/upload go to delete() action
+        $builder->connect('/dashboard/upload', ['controller' => 'DashboardUploads', 'action' => 'delete'])
+            ->setMethods(['DELETE']);
+        // POST requests to /dashboard/upload go to upload() action
+        $builder->connect('/dashboard/upload', ['controller' => 'DashboardUploads', 'action' => 'upload'])
+            ->setMethods(['POST']);
         $builder->connect('/dashboard/upload/delete', ['controller' => 'DashboardUploads', 'action' => 'delete']);
         
         // Posts API - CRUD operations
@@ -69,6 +79,11 @@ return function (RouteBuilder $routes): void {
             ->setPass(['id']);
         $builder->connect('/dashboard/posts/delete/{id}', ['controller' => 'DashboardPosts', 'action' => 'delete'])
             ->setPass(['id']);
+        
+        // Comments API
+        $builder->connect('/dashboard/comments/create', ['controller' => 'DashboardComments', 'action' => 'create']);
+        $builder->connect('/dashboard/comments/list', ['controller' => 'DashboardComments', 'action' => 'list']);
+        $builder->connect('/dashboard/comments/delete', ['controller' => 'DashboardComments', 'action' => 'delete']);
         
         // Reactions API (toggle/add/remove)
         $builder->connect('/dashboard/posts/react', ['controller' => 'DashboardReactions', 'action' => 'react']);
@@ -93,6 +108,9 @@ return function (RouteBuilder $routes): void {
         // Search API
         $builder->connect('/search', ['controller' => 'Search', 'action' => 'index']);
         $builder->connect('/api/search/suggest', ['controller' => 'Search', 'action' => 'suggest']);
+
+        // Users API
+        $builder->connect('/users/current-profile', ['controller' => 'Users', 'action' => 'currentProfile']);
 
         // Backwards-compatible redirects for API paths
         $builder->redirect('/api/upload', '/dashboard/upload', ['status' => 301]);

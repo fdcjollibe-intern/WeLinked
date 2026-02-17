@@ -1,78 +1,230 @@
 // middle.js — handles composer, file uploads with progress, and post creation
 (function () {
+  const csrfToken = window.csrfToken || document.querySelector('meta[name="csrfToken"]')?.content || '';
+  
+  console.log('[middle.js] 🔐 Module loaded, CSRF token available:', !!csrfToken);
+
   function el(id) { return document.getElementById(id); }
 
-  function createProgressBar(filename) {
+  function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+  }
+
+  function createAttachmentPreview(file) {
     const wrap = document.createElement('div');
-    wrap.className = 'upload-item relative rounded-lg overflow-hidden bg-gray-50 p-2 flex items-center gap-3';
-    const label = document.createElement('div');
-    label.textContent = filename;
-    label.className = 'text-sm text-gray-700 flex-1';
+    wrap.className = 'upload-item relative rounded-xl border border-gray-200 bg-white p-3 flex items-center gap-3 shadow-sm';
 
-    // circular progress using conic-gradient
-    const circle = document.createElement('div');
-    circle.className = 'progress-circle w-12 h-12 rounded-full flex items-center justify-center bg-white shadow';
-    circle.style.position = 'relative';
-    circle.dataset.pct = '0';
-    const pct = document.createElement('div');
-    pct.className = 'progress-pct text-xs font-semibold text-gray-700';
-    pct.textContent = '0%';
-    circle.appendChild(pct);
+    const mediaShell = document.createElement('div');
+    mediaShell.className = 'w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0';
 
-    wrap.appendChild(circle);
-    wrap.appendChild(label);
+    const isImage = file.type.startsWith('image/');
+    const mediaEl = document.createElement(isImage ? 'img' : 'video');
+    mediaEl.className = 'w-full h-full object-cover';
+    const tempUrl = URL.createObjectURL(file);
+    mediaEl.src = tempUrl;
+    const revoke = () => URL.revokeObjectURL(tempUrl);
+    mediaEl.addEventListener(isImage ? 'load' : 'loadeddata', revoke, { once: true });
+    if (!isImage) {
+      mediaEl.muted = true;
+      mediaEl.loop = true;
+      mediaEl.playsInline = true;
+    }
+    mediaShell.appendChild(mediaEl);
+
+    const meta = document.createElement('div');
+    meta.className = 'flex-1 min-w-0';
+    meta.innerHTML = `
+      <p class="text-sm font-semibold text-gray-800 truncate">${file.name}</p>
+      <p class="text-xs text-gray-500">${(file.size / (1024 * 1024)).toFixed(1)} MB • ${file.type || 'binary'}</p>
+    `;
+
+    const badge = document.createElement('div');
+    badge.className = 'text-xs font-medium text-blue-600';
+    badge.textContent = 'Uploading…';
+
+    // Cancel/Remove button (red X circle)
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md z-10';
+    cancelBtn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>';
+    cancelBtn.title = 'Remove file';
+
+    const ring = document.createElement('div');
+    ring.className = 'absolute inset-0 bg-white/70 flex items-center justify-center rounded-xl transition-opacity';
+    const ringText = document.createElement('div');
+    ringText.className = 'text-sm font-semibold text-gray-700';
+    ringText.textContent = '0%';
+    ring.appendChild(ringText);
+
+    wrap.appendChild(mediaShell);
+    wrap.appendChild(meta);
+    wrap.appendChild(badge);
+    wrap.appendChild(cancelBtn);
+    wrap.appendChild(ring);
 
     return {
       wrap,
-      setProgress: function (n) {
-        const clamped = Math.max(0, Math.min(100, Math.round(n)));
-        circle.style.background = 'conic-gradient(#3b82f6 ' + clamped + '%, #e6e6e6 ' + clamped + '%)';
-        pct.textContent = clamped + '%';
+      cancelBtn,
+      setProgress(percent) {
+        const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+        ringText.textContent = clamped + '%';
+      },
+      markUploaded(url) {
+        ring.style.opacity = '0';
+        setTimeout(() => ring.remove(), 200);
+        badge.textContent = 'Uploaded';
+        badge.className = 'text-xs font-medium text-emerald-600';
+        if (url) {
+          mediaEl.src = url;
+        }
+      },
+      markFailed() {
+        ringText.textContent = 'Failed';
+        ring.classList.add('bg-red-50');
+        badge.textContent = 'Failed';
+        badge.className = 'text-xs font-medium text-red-600';
+      },
+      markRemoving() {
+        ring.style.opacity = '1';
+        ring.className = 'absolute inset-0 bg-white/90 flex items-center justify-center rounded-xl transition-opacity';
+        ringText.textContent = 'Removing...';
+        ringText.className = 'text-sm font-semibold text-orange-600';
+        badge.textContent = 'Removing';
+        badge.className = 'text-xs font-medium text-orange-600';
+        cancelBtn.disabled = true;
+        cancelBtn.style.opacity = '0.5';
+        cancelBtn.style.cursor = 'not-allowed';
+      },
+      remove() {
+        wrap.remove();
       }
     };
   }
 
   function uploadFile(file, type, onProgress) {
     return new Promise(function (resolve, reject) {
+      console.log('[middle.js] 📤 Starting upload:', {
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+        uploadType: type,
+        timestamp: new Date().toISOString()
+      });
+
       const xhr = new XMLHttpRequest();
       const url = '/dashboard/upload?type=' + encodeURIComponent(type);
       const fd = new FormData();
       fd.append('file', file, file.name);
       
       // Add CSRF token
-      const csrfToken = window.csrfToken || '';
       if (csrfToken) {
         fd.append('_csrfToken', csrfToken);
+        console.log('[middle.js] ✓ CSRF token added to upload request');
+      } else {
+        console.warn('[middle.js] ⚠️ No CSRF token available for upload');
       }
       
       xhr.open('POST', url, true);
       xhr.withCredentials = true;
+      if (csrfToken) {
+        xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+      }
+      
+      console.log('[middle.js] 🌐 XHR request opened:', {
+        url: url,
+        method: 'POST',
+        withCredentials: true
+      });
+
       xhr.upload.onprogress = function (e) {
         if (e.lengthComputable) {
           const pct = Math.round((e.loaded / e.total) * 100);
+          console.log('[middle.js] 📊 Upload progress:', {
+            fileName: file.name,
+            progress: pct + '%',
+            loaded: (e.loaded / (1024 * 1024)).toFixed(2) + ' MB',
+            total: (e.total / (1024 * 1024)).toFixed(2) + ' MB'
+          });
           onProgress(pct);
         }
       };
+
       xhr.onload = function () {
+        console.log('[middle.js] 📥 Upload response received:', {
+          fileName: file.name,
+          status: xhr.status,
+          statusText: xhr.statusText,
+          responseLength: xhr.responseText.length
+        });
+
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const json = JSON.parse(xhr.responseText || '{}');
+            console.log('[middle.js] ✅ Upload successful:', {
+              fileName: file.name,
+              response: json
+            });
             resolve(json.files ? json.files[0] : null);
           } catch (err) {
+            console.error('[middle.js] ❌ Failed to parse upload response:', {
+              fileName: file.name,
+              error: err.message,
+              responseText: xhr.responseText
+            });
             resolve(null);
           }
         } else {
+          console.error('[middle.js] ❌ Upload failed with status:', {
+            fileName: file.name,
+            status: xhr.status,
+            statusText: xhr.statusText,
+            response: xhr.responseText
+          });
           reject(new Error('Upload failed: ' + xhr.status));
         }
       };
-      xhr.onerror = function () { reject(new Error('Upload network error')); };
+
+      xhr.onerror = function () {
+        console.error('[middle.js] ❌ Upload network error:', {
+          fileName: file.name,
+          timestamp: new Date().toISOString()
+        });
+        reject(new Error('Upload network error'));
+      };
+
+      console.log('[middle.js] 🚀 Sending XHR request...');
       xhr.send(fd);
     });
   }
 
   function initializeMiddleColumn() {
-    console.debug('[middle.js] Initializing composer and handlers');
+    console.log('[middle.js] ==========================================');
+    console.log('[middle.js] 🚀 INITIALIZING MIDDLE COLUMN');
+    console.log('[middle.js] ==========================================');
+    console.log('[middle.js] Timestamp:', new Date().toISOString());
+    console.log('[middle.js] Page URL:', window.location.href);
+    
     const input = el('attachment-input');
+    const submit = el('post-submit-btn');
+    const postInput = el('post-composer-textarea');
+    
+    console.log('[middle.js] 🔍 Element detection:', {
+      'attachment-input': input ? '✅ Found' : '❌ Not found',
+      'post-submit-btn': submit ? '✅ Found' : '❌ Not found',
+      'post-composer-textarea': postInput ? '✅ Found' : '❌ Not found'
+    });
+    
+    if (!input || !submit || !postInput) {
+      console.warn('[middle.js] ⚠️ Missing required elements, exiting initialization');
+      console.log('[middle.js] Available IDs in document:', 
+        Array.from(document.querySelectorAll('[id]')).map(el => el.id).slice(0, 20)
+      );
+      return;
+    }
+    
+    console.log('[middle.js] ✅ All required elements found, continuing initialization...');
+    
     // reuse existing preview container if present, otherwise create and append to composer
     let preview = document.getElementById('attachment-preview');
     if (!preview) {
@@ -83,21 +235,209 @@
       else document.body.appendChild(preview);
     }
 
-    const submit = el('post-submit-btn'); // Updated to match template ID
-    const postInput = el('post-composer-textarea'); // Updated to match template ID
-    console.debug('[middle.js] Found elements:', { input: !!input, submit: !!submit, postInput: !!postInput });
-
-    // Exit early if required elements don't exist (not on a page with composer)
-    if (!input || !submit || !postInput) {
-      return;
-    }
+    let previewItems = [];
+    let uploadedFilesData = []; // Store successfully uploaded files
+    
+    console.log('[middle.js] 📦 Preview container ready:', {
+      previewId: preview.id,
+      previewExists: !!preview
+    });
     
     // Initialize mention autocomplete
     let mentionAutocomplete = null;
     if (window.MentionAutocomplete && postInput) {
       mentionAutocomplete = new window.MentionAutocomplete(postInput);
-      console.debug('[middle.js] Mention autocomplete initialized');
+      console.log('[middle.js] ✅ Mention autocomplete initialized');
+    } else {
+      console.log('[middle.js] ℹ️ Mention autocomplete not available:', {
+        MentionAutocomplete: !!window.MentionAutocomplete,
+        postInput: !!postInput
+      });
     }
+    
+    console.log('[middle.js] 🎯 Attaching event listeners to submit button...');
+    console.log('[middle.js] Submit button element:', submit);
+    console.log('[middle.js] Submit button tag:', submit.tagName);
+    console.log('[middle.js] Submit button id:', submit.id);
+    
+    // Fetch and update current user's profile photo
+    const composer = document.getElementById('post-composer');
+    const userPhotoEl = document.getElementById('composer-user-photo');
+    if (composer && userPhotoEl) {
+      fetch('/users/current-profile')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.user && data.user.profile_photo_path) {
+            const currentSrc = userPhotoEl.src || '';
+            const newSrc = data.user.profile_photo_path;
+            if (!currentSrc.includes(newSrc)) {
+              if (userPhotoEl.tagName === 'IMG') {
+                userPhotoEl.src = newSrc;
+              } else {
+                const img = document.createElement('img');
+                img.id = 'composer-user-photo';
+                img.src = newSrc;
+                img.alt = 'Profile';
+                img.className = 'w-10 h-10 rounded-full object-cover';
+                userPhotoEl.parentNode.replaceChild(img, userPhotoEl);
+              }
+              console.log('[middle.js] ✅ Updated composer profile photo');
+            }
+          }
+        })
+        .catch(err => console.warn('[middle.js] Could not fetch user profile:', err));
+    }
+    
+    // Drag & Drop functionality
+    const dropOverlay = document.getElementById('composer-drop-overlay');
+    if (composer && dropOverlay) {
+      let dragCounter = 0;
+      
+      composer.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        if (dragCounter === 1) {
+          dropOverlay.classList.remove('hidden');
+        }
+      });
+      
+      composer.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      
+      composer.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter === 0) {
+          dropOverlay.classList.add('hidden');
+        }
+      });
+      
+      composer.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter = 0;
+        dropOverlay.classList.add('hidden');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          console.log('[middle.js] 📥 Files dropped:', files.length);
+          // Create a new DataTransfer to add files to input
+          const dataTransfer = new DataTransfer();
+          // Add existing files from input
+          if (input.files) {
+            for (let i = 0; i < input.files.length; i++) {
+              dataTransfer.items.add(input.files[i]);
+            }
+          }
+          // Add dropped files
+          for (let i = 0; i < files.length; i++) {
+            dataTransfer.items.add(files[i]);
+          }
+          input.files = dataTransfer.files;
+          // Trigger change event
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+      
+      console.log('[middle.js] ✅ Drag & drop enabled');
+    }
+    
+    // Unsaved changes warning
+    let hasUnsavedChanges = false;
+    
+    function checkUnsavedChanges() {
+      const hasText = postInput.value.trim().length > 0;
+      const hasAttachments = uploadedFilesData.length > 0;
+      hasUnsavedChanges = hasText || hasAttachments;
+      window.globalHasUnsavedChanges = hasUnsavedChanges; // Update global flag
+    }
+    
+    postInput.addEventListener('input', checkUnsavedChanges);
+    
+    window.addEventListener('beforeunload', function(e) {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    });
+    
+    // Create unsaved changes modal
+    function showUnsavedChangesModal() {
+      return new Promise(function(resolve) {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+          <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Discard post?</h3>
+            <p class="text-gray-600 mb-6">You have unsaved changes that will be lost if you continue.</p>
+            <div class="flex gap-3">
+              <button id="modal-cancel" class="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
+                Keep editing
+              </button>
+              <button id="modal-discard" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors">
+                Discard post
+              </button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        modal.querySelector('#modal-cancel').addEventListener('click', function() {
+          modal.remove();
+          resolve(false);
+        });
+        
+        modal.querySelector('#modal-discard').addEventListener('click', async function() {
+          modal.remove();
+          // Delete uploaded files from Cloudinary
+          for (const file of uploadedFilesData) {
+            if (file.public_id) {
+              try {
+                await fetch('/dashboard/upload', {
+                  method: 'DELETE',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                  },
+                  body: JSON.stringify({
+                    public_id: file.public_id,
+                    resource_type: file.resource_type || 'image'
+                  })
+                });
+                console.log('[middle.js] 🗑️ Cleaned up:', file.public_id);
+              } catch (err) {
+                console.error('[middle.js] Failed to cleanup:', err);
+              }
+            }
+          }
+          
+          // Clear composer UI
+          postInput.value = '';
+          if (postInput && postInput.tagName && postInput.tagName.toLowerCase() === 'textarea') {
+            postInput.style.height = '';
+            if (typeof autoResizeTextarea === 'function') {
+              autoResizeTextarea(postInput);
+            }
+          }
+          preview.innerHTML = '';
+          previewItems = [];
+          uploadedFilesData = [];
+          
+          resolve(true);
+        });
+      });
+    }
+    
+    // Connect to global navigation guard
+    window.globalShowUnsavedModal = showUnsavedChangesModal;
+    
+    console.log('[middle.js] ✅ Unsaved changes warning enabled');
     
     // Auto-resize textarea: keep single-line height until text wraps or user adds lines
     function autoResizeTextarea(t){
@@ -128,146 +468,445 @@
     }
 
     input.addEventListener('change', function () {
-      preview.innerHTML = '';
-      Array.from(input.files || []).forEach(function (f) {
-        const node = createProgressBar(f.name);
-        preview.appendChild(node.wrap);
+      console.log('[middle.js] 📂 Files selected, starting immediate upload...');
+      
+      const selected = Array.from(input.files || []);
+      console.log('[middle.js] Selected attachments:', selected.map(f => ({ name: f.name, type: f.type, size: f.size })));
+      
+      if (!selected.length) {
+        if (previewItems.length === 0) {
+          preview.innerHTML = '<p class="text-sm text-gray-400">No attachments selected</p>';
+        }
+        return;
+      }
+      
+      // Remove placeholder text if it exists
+      const placeholder = preview.querySelector('p.text-gray-400');
+      if (placeholder) {
+        placeholder.remove();
+      }
+      
+      // Validate files first
+      const maxSize = 250 * 1024 * 1024;
+      for (let f of selected) {
+        if (f.size > maxSize) {
+          alert('File too large: ' + f.name + ' (max 250 MB)');
+          input.value = '';
+          return;
+        }
+        if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) {
+          alert('Invalid file type: ' + f.name + ' (only images and videos)');
+          input.value = '';
+          return;
+        }
+      }
+      
+      // Create preview cards and start uploading immediately
+      selected.forEach(function (file, idx) {
+        const card = createAttachmentPreview(file);
+        previewItems.push(card);
+        preview.appendChild(card.wrap);
+        
+        // Cancel button handler
+        card.cancelBtn.addEventListener('click', async function() {
+          console.log('[middle.js] ❌ Removing file:', file.name);
+          
+          // Show removing indicator
+          card.markRemoving();
+          
+          // Remove from uploaded data and delete from Cloudinary if it was uploaded
+          const uploadedIdx = uploadedFilesData.findIndex(f => f.original === file.name);
+          if (uploadedIdx !== -1) {
+            const uploadedFile = uploadedFilesData[uploadedIdx];
+            console.log('[middle.js] 🗑️ Deleting from Cloudinary:', uploadedFile.public_id);
+            
+            // Delete from Cloudinary
+            try {
+              const response = await fetch('/dashboard/upload', {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                  public_id: uploadedFile.public_id,
+                  resource_type: uploadedFile.resource_type
+                })
+              });
+              
+              const result = await response.json();
+              if (result.success) {
+                console.log('[middle.js] ✅ Deleted from Cloudinary successfully');
+              } else {
+                console.error('[middle.js] ⚠️ Failed to delete from Cloudinary:', result);
+              }
+            } catch (err) {
+              console.error('[middle.js] ❌ Error deleting from Cloudinary:', err);
+            }
+            
+            uploadedFilesData.splice(uploadedIdx, 1);
+          }
+          
+          // Find and remove from previewItems array
+          const cardIdx = previewItems.findIndex(c => c === card);
+          if (cardIdx !== -1) {
+            previewItems.splice(cardIdx, 1);
+          }
+          
+          card.remove();
+          
+          // If no more files, clear the input
+          if (previewItems.length === 0) {
+            input.value = '';
+            preview.innerHTML = '<p class="text-sm text-gray-400">No attachments selected</p>';
+          }
+          
+          checkUnsavedChanges();
+        });
+        
+        // Start upload immediately
+        console.log('[middle.js] 🚀 Starting immediate upload for:', file.name);
+        uploadFile(file, 'post', function(pct) {
+          card.setProgress(pct);
+        }).then(function(result) {
+          if (result && result.url) {
+            console.log('[middle.js] ✅ File uploaded:', file.name, '->', result.url);
+            card.markUploaded(result.url);
+            uploadedFilesData.push(result);
+            checkUnsavedChanges();
+          } else {
+            console.error('[middle.js] ❌ Upload returned no URL for:', file.name);
+            card.markFailed();
+          }
+        }).catch(function(err) {
+          console.error('[middle.js] ❌ Upload failed for:', file.name, err);
+          card.markFailed();
+          alert('Upload failed for ' + file.name + ': ' + err.message);
+        });
       });
+      
+      // Clear the file input so the same files can be selected again
+      input.value = '';
     });
 
     submit.addEventListener('click', function () {
-      const files = Array.from(input.files || []);
+      console.log('[middle.js] ==========================================');
+      console.log('[middle.js] 🖱️ SUBMIT BUTTON CLICKED');
+      console.log('[middle.js] ==========================================');
+      
       const body = postInput.value || '';
-      if (files.length === 0 && body.trim() === '') {
+      
+      console.log('[middle.js] 📝 Post data gathered:', {
+        bodyLength: body.length,
+        uploadedFilesCount: uploadedFilesData.length,
+        files: uploadedFilesData.map(f => ({ url: f.url, original: f.original }))
+      });
+
+      if (uploadedFilesData.length === 0 && body.trim() === '') {
+        console.warn('[middle.js] ⚠️ Post validation failed: empty content');
         alert('Write something or add an attachment.');
         return;
       }
-
-      // Validate files
-      const maxSize = 250 * 1024 * 1024;
-      for (let f of files) {
-        if (f.size > maxSize) { alert('File too large: ' + f.name); return; }
-        if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) { alert('Invalid file type: ' + f.name); return; }
+      
+      // Check if any uploads failed
+      const hasFailedUploads = previewItems.some(function(card) {
+        return card.wrap.querySelector('.text-red-600');
+      });
+      
+      if (hasFailedUploads) {
+        console.warn('[middle.js] ⚠️ Some uploads failed');
+        alert('Some files failed to upload. Please remove them and try again.');
+        return;
       }
+      
+      console.log('[middle.js] ✓ Post validation passed, submitting...');
 
       // Check for single video -> Reels
-      const videos = files.filter(f => f.type.startsWith('video/'));
-      const images = files.filter(f => f.type.startsWith('image/'));
+      const videos = uploadedFilesData.filter(f => f.url && (f.url.includes('.mp4') || f.url.includes('.webm') || f.url.includes('.mov')));
+      const images = uploadedFilesData.filter(f => f.url && !videos.find(v => v.url === f.url));
       
       if (videos.length === 1 && images.length === 0 && window.showReelsConfirmation) {
         window.showReelsConfirmation(function(confirmed) {
           if (confirmed) {
-            proceedWithUpload(files, body, true); // Mark as reel
+            submitPost(body, uploadedFilesData, true); // Mark as reel
           }
         });
         return;
       }
 
-      // Proceed normally
-      proceedWithUpload(files, body, false);
+      // Proceed with post submission using already-uploaded files
+      submitPost(body, uploadedFilesData, false);
     });
 
     function proceedWithUpload(files, body, isReel) {
-      // Upload files sequentially with progress
-      const uploadedUrls = [];
-      const items = [];
-
-      Array.from(files).forEach(function (f) {
-        const node = createProgressBar(f.name);
-        preview.appendChild(node.wrap);
-        items.push(node);
+      console.log('[middle.js] 🎬 Starting upload process:', {
+        fileCount: files.length,
+        bodyLength: body.length,
+        isReel: isReel
       });
 
+      const queue = Array.from(files || []);
+
+      if (queue.length === 0) {
+        console.log('[middle.js] 📮 No files to upload, submitting post immediately');
+        submitPost(body, [], isReel);
+        return;
+      }
+
+      const cards = queue.map(function (file, idx) {
+        const existing = previewItems[idx];
+        if (existing) return existing;
+        const fallback = createAttachmentPreview(file);
+        preview.appendChild(fallback.wrap);
+        return fallback;
+      });
+
+      const uploadedFiles = [];
+
       (function uploadNext(i) {
-        if (i >= files.length) {
-          // Get mentioned user IDs
-          const mentionedUserIds = mentionAutocomplete ? mentionAutocomplete.getMentionedUserIds() : [];
-          
-          console.debug('[middle.js] Creating post with mentions:', mentionedUserIds);
-          
-          // create post with uploadedUrls
-          fetch('/dashboard/posts/create', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              body: body, 
-              content_text: body,
-              attachments: uploadedUrls, 
-              media: uploadedUrls,
-              mentions: mentionedUserIds,
-              is_reel: isReel 
-            })
-          }).then(function (r) { return r.json(); })
-            .then(function (json) {
-              // show modal with close button
-              const modal = document.createElement('div');
-              modal.className = 'thread-toast fixed top-6 right-6 bg-white shadow-lg border rounded-lg px-4 py-3 z-60 flex items-center gap-3';
-              const txt = document.createElement('div'); 
-              txt.textContent = isReel ? 'Reel successfully posted' : 'Post successfully created';
-              const close = document.createElement('button'); close.className = 'ml-2 text-gray-500'; close.textContent = '✕';
-              close.addEventListener('click', ()=> modal.remove());
-              modal.appendChild(txt); modal.appendChild(close);
-              document.body.appendChild(modal);
-              setTimeout(function () { if (modal.parentNode) modal.parentNode.removeChild(modal); }, 3000);
-
-              // prepend new post fragment to posts-list if possible
-              const postsList = document.getElementById('posts-list');
-              if (postsList && json && json.post) {
-                const article = document.createElement('article');
-                article.className = 'post bg-white rounded-2xl shadow-sm border border-gray-100 p-5';
-                article.dataset.postId = json.post.id || Date.now();
-                
-                const user = (json.post.user && (json.post.user.username || json.post.user)) || 'You';
-                let html = '<div class="flex items-start justify-between mb-4">';
-                html += '<div class="flex items-center space-x-3">';
-                html += '<div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">' + user.charAt(0).toUpperCase() + '</div>';
-                html += '<div><h3 class="font-semibold text-gray-900">' + user + '</h3>';
-                html += '<p class="text-xs text-gray-400">Just now</p></div></div></div>';
-                
-                if (json.post.body) {
-                  html += '<p class="text-gray-700 mb-4">' + json.post.body + '</p>';
-                }
-                
-                // Add photo collage if images exist
-                if (json.post.attachments && json.post.attachments.length > 0 && window.createPhotoCollage) {
-                  const imageUrls = json.post.attachments.map(a => a.url || a);
-                  html += window.createPhotoCollage(imageUrls, json.post.id);
-                }
-                
-                article.innerHTML = html;
-                
-                // Insert after composer
-                postInput.mentionedUsers = []; // Clear mentioned users
-                const composer = postsList.querySelector('.composer');
-                if (composer && composer.nextSibling) {
-                  postsList.insertBefore(article, composer.nextSibling);
-                } else {
-                  postsList.insertBefore(article, postsList.firstChild);
-                }
-              }
-
-              // clear composer and reset height
-              postInput.value = '';
-              if(postInput && postInput.tagName && postInput.tagName.toLowerCase()==='textarea'){
-                postInput.style.height = '';
-                autoResizeTextarea(postInput);
-              }
-              input.value = '';
-              preview.innerHTML = '';
-            });
+        if (i >= queue.length) {
+          console.log('[middle.js] ✅ All files uploaded successfully:', {
+            totalFiles: uploadedFiles.length,
+            files: uploadedFiles.map(f => ({ url: f.url, original: f.original }))
+          });
+          submitPost(body, uploadedFiles, isReel);
           return;
         }
 
-        const file = files[i];
-        const node = items[i];
+        const file = queue[i];
+        const card = cards[i];
+        
+        console.log('[middle.js] 📤 Uploading file ' + (i + 1) + '/' + queue.length + ':', file.name);
+        
         uploadFile(file, 'post', function (pct) {
-          if (node && node.setProgress) node.setProgress(pct);
+          if (card && card.setProgress) card.setProgress(pct);
         }).then(function (res) {
-          if (res && res.url) uploadedUrls.push(res.url);
+          if (res && res.url) {
+            console.log('[middle.js] ✅ File uploaded successfully:', {
+              fileIndex: i + 1,
+              fileName: file.name,
+              url: res.url
+            });
+            uploadedFiles.push(res);
+            if (card && card.markUploaded) {
+              card.markUploaded(res.url);
+            }
+          } else {
+            console.error('[middle.js] ❌ Upload returned no URL:', {
+              fileIndex: i + 1,
+              fileName: file.name,
+              response: res
+            });
+            if (card && card.markFailed) {
+              card.markFailed();
+            }
+          }
           uploadNext(i + 1);
-        }).catch(function (err) { alert('Upload failed: ' + err.message); });
+        }).catch(function (err) {
+          console.error('[middle.js] ❌ Upload error:', {
+            fileIndex: i + 1,
+            fileName: file.name,
+            error: err.message,
+            stack: err.stack
+          });
+          if (card && card.markFailed) card.markFailed();
+          alert('Upload failed: ' + err.message);
+        });
       })(0);
+    }
+
+    function submitPost(body, uploadedFiles, isReel) {
+      const mentionedUserIds = mentionAutocomplete ? mentionAutocomplete.getMentionedUserIds() : [];
+      const payload = {
+        body: body,
+        content_text: body,
+        attachments: uploadedFiles,
+        media: uploadedFiles,
+        mentions: mentionedUserIds,
+        is_reel: isReel
+      };
+
+      console.log('[middle.js] 📮 Submitting post to backend:', {
+        endpoint: '/dashboard/posts/create',
+        payload: payload,
+        payloadSize: JSON.stringify(payload).length + ' bytes',
+        timestamp: new Date().toISOString()
+      });
+
+      fetch('/dashboard/posts/create', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(function (r) {
+        console.log('[middle.js] 📥 Post creation response received:', {
+          status: r.status,
+          statusText: r.statusText,
+          ok: r.ok
+        });
+        
+        // Clone the response to read it as text for debugging
+        return r.clone().text().then(function(text) {
+          console.log('[middle.js] 📄 Raw response body (first 500 chars):', text.substring(0, 500));
+          console.log('[middle.js] 📊 Response body length:', text.length, 'bytes');
+          console.log('[middle.js] 🔍 First character code:', text.charCodeAt(0));
+          
+          try {
+            return JSON.parse(text);
+          } catch(parseErr) {
+            console.error('[middle.js] ⚠️ JSON Parse Error Details:', {
+              error: parseErr.message,
+              firstChars: text.substring(0, 100),
+              lastChars: text.substring(text.length - 100)
+            });
+            throw parseErr;
+          }
+        });
+      })
+      .then(function (json) {
+        console.log('[middle.js] 📋 Post creation response data:', json);
+        
+        if (!json || !json.success) {
+          console.error('[middle.js] ❌ Post creation failed:', {
+            success: json?.success,
+            message: json?.message,
+            error: json?.error,
+            fullResponse: json
+          });
+          alert(json?.message || 'Failed to create post');
+          return;
+        }
+        
+        console.log('[middle.js] ✅ Post created successfully:', {
+          postId: json.post?.id,
+          timestamp: new Date().toISOString()
+        });
+
+          const modal = document.createElement('div');
+          modal.className = 'thread-toast fixed top-6 right-6 bg-white shadow-lg border rounded-lg px-4 py-3 z-60 flex items-center gap-3';
+          const txt = document.createElement('div');
+          txt.textContent = isReel ? 'Reel successfully posted' : 'Post successfully created';
+          const close = document.createElement('button'); close.className = 'ml-2 text-gray-500'; close.textContent = '✕';
+          close.addEventListener('click', ()=> modal.remove());
+          modal.appendChild(txt); modal.appendChild(close);
+          document.body.appendChild(modal);
+          setTimeout(function () { if (modal.parentNode) modal.parentNode.removeChild(modal); }, 3000);
+
+          appendNewPost(json.post || {}, body, uploadedFiles);
+
+          // Clear unsaved changes flag
+          hasUnsavedChanges = false;
+          window.globalHasUnsavedChanges = false;
+
+          postInput.value = '';
+          if(postInput && postInput.tagName && postInput.tagName.toLowerCase()==='textarea'){
+            postInput.style.height = '';
+            autoResizeTextarea(postInput);
+          }
+          postInput.mentionedUsers = [];
+          input.value = '';
+          preview.innerHTML = '';
+          previewItems = [];
+          uploadedFilesData = [];
+        })
+        .catch(function (err) {
+          console.error('[middle.js] ❌ Post creation network error:', {
+            error: err.message,
+            stack: err.stack,
+            timestamp: new Date().toISOString()
+          });
+          alert('Failed to publish post. Please try again.');
+        });
+    }
+
+    function appendNewPost(post, body, uploadedFiles) {
+      const postsList = document.getElementById('posts-list');
+      if (!postsList) return;
+      const article = document.createElement('article');
+      article.className = 'post bg-white rounded-2xl shadow-sm border border-gray-100 p-5';
+      article.dataset.postId = post.id || Date.now();
+
+      const user = post.user || {};
+      const username = user.username || 'You';
+      const fullName = user.full_name || username;
+      const profilePhoto = user.profile_photo_path || user.profile_photo || '';
+      const safeName = escapeHtml(fullName);
+      const safeUsername = escapeHtml(username);
+      const initial = (username || 'Y').charAt(0).toUpperCase();
+      const safePhoto = profilePhoto ? escapeHtml(profilePhoto) : '';
+
+      let html = '<div class="flex items-start justify-between mb-4">';
+      html += '<div class="flex items-center space-x-3">';
+      html += '<a href="/profile/' + safeUsername + '" class="flex-shrink-0">';
+      if (profilePhoto) {
+        html += '<div class="w-10 h-10 rounded-full overflow-hidden"><img src="' + safePhoto + '" alt="' + safeName + '" class="w-full h-full object-cover"></div>';
+      } else {
+        html += '<div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">' + escapeHtml(initial) + '</div>';
+      }
+      html += '</a>';
+      html += '<div>';
+      html += '<a href="/profile/' + safeUsername + '" class="hover:underline">';
+      html += '<h3 class="font-semibold text-gray-900">' + safeName + '</h3>';
+      html += '</a>';
+      html += '<p class="text-xs text-gray-400">Just now</p></div></div></div>';
+
+      if (body) {
+        html += '<p class="text-gray-700 mb-4">' + escapeHtml(body) + '</p>';
+      }
+
+      const urls = (post.attachments && post.attachments.length ? post.attachments : uploadedFiles || []).map(function (att) {
+        if (typeof att === 'string') return att;
+        return att.url || '';
+      }).filter(Boolean);
+
+      if (urls.length && window.createPhotoCollage) {
+        html += window.createPhotoCollage(urls, post.id || Date.now());
+      }
+
+      html += `
+        <div class="flex items-center justify-between text-sm text-gray-500 mb-2 px-1">
+          <div class="reaction-summary hidden" data-total="0">
+            <span class="reaction-emojis" style="display:flex;align-items:center"></span>
+            <span class="reaction-count">0</span>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span class="comments-count" data-count="0">0 comments</span>
+            <span class="shares-count">0 shares</span>
+          </div>
+        </div>
+        <div class="border-t border-gray-100 pt-2 flex items-center justify-around">
+          <button class="reaction-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors" data-user-reaction="">
+            <svg class="like-icon w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            <span class="reaction-label text-sm font-medium text-gray-700">Like</span>
+          </button>
+          <button class="comment-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <span class="text-sm font-medium text-gray-700">Comment</span>
+          </button>
+          <button class="share-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            <span class="text-sm font-medium text-gray-700">Share</span>
+          </button>
+        </div>`;
+
+      article.innerHTML = html;
+
+      const composer = postsList.querySelector('.composer');
+      if (composer && composer.nextSibling) {
+        postsList.insertBefore(article, composer.nextSibling);
+      } else {
+        postsList.insertBefore(article, postsList.firstChild);
+      }
     }
 
     // Infinite scroll: fetch next fragments from /dashboard/middle-column?start=N&feed=...
@@ -306,16 +945,97 @@
     })();
   }
 
+  // Global navigation interceptor for unsaved changes
+  window.globalHasUnsavedChanges = false;
+  window.globalShowUnsavedModal = null;
+  
+  function setupGlobalNavigationGuard() {
+    // Intercept all link clicks
+    document.addEventListener('click', function(e) {
+      if (!window.globalHasUnsavedChanges) return;
+      
+      const link = e.target.closest('a');
+      if (!link) return;
+      
+      // Skip if it's an external link or javascript: link
+      const href = link.getAttribute('href');
+      if (!href || href === '#' || href.startsWith('javascript:') || href.startsWith('mailto:') || link.target === '_blank') {
+        return;
+      }
+      
+      // Intercept navigation
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (window.globalShowUnsavedModal) {
+        window.globalShowUnsavedModal().then(function(shouldDiscard) {
+          if (shouldDiscard) {
+            window.globalHasUnsavedChanges = false;
+            // Navigate to the link
+            if (link.onclick) {
+              link.onclick.call(link, e);
+            } else {
+              window.location.href = href;
+            }
+          }
+        });
+      }
+    }, true); // Use capture phase to intercept before other handlers
+    
+    // Intercept form submissions (like search)
+    document.addEventListener('submit', function(e) {
+      if (!window.globalHasUnsavedChanges) return;
+      
+      const form = e.target;
+      if (!form || form.tagName !== 'FORM') return;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (window.globalShowUnsavedModal) {
+        window.globalShowUnsavedModal().then(function(shouldDiscard) {
+          if (shouldDiscard) {
+            window.globalHasUnsavedChanges = false;
+            // Submit the form
+            form.submit();
+          }
+        });
+      }
+    }, true);
+    
+    console.log('[middle.js] ✅ Global navigation guard enabled');
+  }
+  
+  // Initialize global guard on load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupGlobalNavigationGuard);
+  } else {
+    setupGlobalNavigationGuard();
+  }
+
   // Initialize on DOMContentLoaded
   document.addEventListener('DOMContentLoaded', function () {
+    console.log('[middle.js] 📄 DOMContentLoaded event fired');
     initializeMiddleColumn();
   });
 
   // Also initialize when middle column fragment is loaded dynamically
   document.addEventListener('fragment:loaded', function(e) {
+    console.log('[middle.js] ==========================================');
+    console.log('[middle.js] 🔄 fragment:loaded EVENT RECEIVED');
+    console.log('[middle.js] ==========================================');
+    console.log('[middle.js] Event detail:', e.detail);
+    console.log('[middle.js] Container:', e.detail?.container);
+    console.log('[middle.js] Path:', e.detail?.path);
+    
     if (e.detail && e.detail.container === 'middle-component') {
-      console.debug('[middle.js] Fragment loaded, re-initializing');
-      setTimeout(initializeMiddleColumn, 50); // Small delay to ensure DOM is ready
+      console.log('[middle.js] ✨ Middle column fragment loaded, scheduling re-initialization in 50ms...');
+      setTimeout(function() {
+        console.log('[middle.js] ⏰ 50ms delay complete, calling initializeMiddleColumn...');
+        initializeMiddleColumn();
+      }, 50); // Small delay to ensure DOM is ready
+    } else {
+      console.log('[middle.js] ⏭️ Fragment is not for middle-component, ignoring');
     }
   });
 

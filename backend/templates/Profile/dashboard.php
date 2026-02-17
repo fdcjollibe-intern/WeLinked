@@ -6,8 +6,9 @@
 ?>
 <?= $this->Html->css('dashboard') ?>
 <script>
-    // Expose CSRF token for JavaScript
+    // Expose CSRF token and current user ID for JavaScript
     window.csrfToken = '<?= $this->request->getAttribute('csrfToken') ?>';
+    window.currentUserId = <?= json_encode($currentUser->id ?? null) ?>;
 </script>
 
 <?php $navHasPhoto = !empty($currentUser->profile_photo_path); ?>
@@ -92,7 +93,8 @@
                 'followersCount' => $followersCount,
                 'followingCount' => $followingCount,
                 'identity' => $identity,
-                'isMobileView' => $isMobileView ?? false
+                'isMobileView' => $isMobileView ?? false,
+                'posts' => $posts ?? []
             ]) ?>
         </main>
 
@@ -108,6 +110,7 @@
 <script src="/js/mentions.js"></script>
 <script src="/js/middle.js"></script>
 <script src="/js/reactions.js"></script>
+<script src="/js/comments.js"></script>
 <script src="/js/gallery.js"></script>
 <script src="/js/composer-modal.js"></script>
 <script src="/js/post-composer.js"></script>

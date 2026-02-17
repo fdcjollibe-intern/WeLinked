@@ -24,15 +24,55 @@ class DashboardUploadsController extends AppController
     {
         $this->request->allowMethod(['post']);
         
+        $this->log('===== UPLOAD REQUEST START =====', 'info');
+        $this->log('Request method: ' . $this->request->getMethod(), 'info');
+        $this->log('Content-Type: ' . $this->request->contentType(), 'info');
+        $this->log('Query params: ' . json_encode($this->request->getQueryParams()), 'info');
+        
         try {
             $type = $this->request->getQuery('type', 'post');
             $allowedTypes = ['post' => 'posts', 'comment' => 'comments'];
+            
+            $this->log('Upload type requested: ' . $type, 'info');
+            
             if (!in_array($type, array_keys($allowedTypes), true)) {
+                $this->log('Invalid upload type: ' . $type, 'error');
                 throw new BadRequestException('Invalid upload type');
             }
 
+            $identity = $this->request->getAttribute('identity');
+            $userId = 0;
+            if (is_object($identity) && isset($identity->id)) {
+                $userId = (int)$identity->id;
+            } elseif (is_array($identity) && isset($identity['id'])) {
+                $userId = (int)$identity['id'];
+            }
+            
+            $this->log('User ID from identity: ' . $userId, 'info');
+
             $uploaded = $this->getRequest()->getUploadedFiles();
+            
+            $this->log('Uploaded files count: ' . count($uploaded), 'info');
+            $this->log('Uploaded files structure: ' . json_encode(array_map(function($file) {
+                if (is_array($file)) {
+                    return array_map(function($f) {
+                        return [
+                            'name' => method_exists($f, 'getClientFilename') ? $f->getClientFilename() : 'unknown',
+                            'size' => method_exists($f, 'getSize') ? $f->getSize() : 0,
+                            'type' => method_exists($f, 'getClientMediaType') ? $f->getClientMediaType() : 'unknown'
+                        ];
+                    }, $file);
+                } else {
+                    return [
+                        'name' => method_exists($file, 'getClientFilename') ? $file->getClientFilename() : 'unknown',
+                        'size' => method_exists($file, 'getSize') ? $file->getSize() : 0,
+                        'type' => method_exists($file, 'getClientMediaType') ? $file->getClientMediaType() : 'unknown'
+                    ];
+                }
+            }, $uploaded)), 'info');
+
             if (empty($uploaded)) {
+                $this->log('No files uploaded in request', 'error');
                 $this->response = $this->response->withType('application/json')
                     ->withStringBody(json_encode(['error' => 'No files uploaded']));
                 return $this->response;
@@ -52,56 +92,117 @@ class DashboardUploadsController extends AppController
             }
 
             if (empty($filesToProcess)) {
+                $this->log('No valid files found after processing uploaded files array', 'error');
                 $this->response = $this->response->withType('application/json')
                     ->withStringBody(json_encode(['error' => 'No valid files found']));
                 return $this->response;
             }
+            
+            $this->log('Files to process: ' . count($filesToProcess), 'info');
 
             $saved = [];
             $maxSize = 250 * 1024 * 1024; // 250 MB
             $subdir = $allowedTypes[$type];
             $webrootDir = WWW_ROOT . 'uploads' . DIRECTORY_SEPARATOR . 'attachments' . DIRECTORY_SEPARATOR . $subdir . DIRECTORY_SEPARATOR;
 
+            $this->log(sprintf(
+                'Upload request: type=%s, user=%s, files=%d',
+                $type,
+                $userId ?: 'guest',
+                count($filesToProcess)
+            ), 'info');
+
             // Create directory if it doesn't exist
             if (!is_dir($webrootDir)) {
                 mkdir($webrootDir, 0755, true);
             }
 
-            // Use Cloudinary if configured (app_local.php has Cloudinary.api_key etc.)
-            $useCloudinary = (bool)Configure::read('Cloudinary.api_key');
-            $uploader = $useCloudinary ? new CloudinaryUploader() : null;
+            // Use Cloudinary if configured (app_local.php/cloudinary.php define credentials)
+            $cloudinaryConfig = [];
+            try {
+                Configure::load('cloudinary', 'default');
+                $cloudinaryConfig = (array)Configure::read('Cloudinary');
+                $this->log('Cloudinary config loaded successfully', 'info');
+                $this->log('Cloudinary config keys: ' . json_encode(array_keys($cloudinaryConfig)), 'debug');
+            } catch (\Throwable $configError) {
+                $this->log('Cloudinary config not loaded: ' . $configError->getMessage(), 'warning');
+            }
 
-            foreach ($filesToProcess as $file) {
+            $useCloudinary = !empty($cloudinaryConfig['api_key']) && !empty($cloudinaryConfig['cloud_name']);
+            $uploader = $useCloudinary ? new CloudinaryUploader() : null;
+            
+            $this->log('Upload method: ' . ($useCloudinary ? 'Cloudinary' : 'Local storage'), 'info');
+            if ($useCloudinary) {
+                $this->log('Cloudinary cloud_name: ' . ($cloudinaryConfig['cloud_name'] ?? 'N/A'), 'info');
+            }
+
+            foreach ($filesToProcess as $idx => $file) {
                 // $file implements Psr\Http\Message\UploadedFileInterface
                 $size = $file->getSize() ?? 0;
-                if ($size > $maxSize) {
-                    continue;
-                }
                 $mediaType = $file->getClientMediaType() ?? '';
-                if (strpos($mediaType, 'image/') !== 0 && strpos($mediaType, 'video/') !== 0) {
+                $original = $file->getClientFilename() ?? 'file';
+                
+                $this->log(sprintf(
+                    '\n----- Processing file %d/%d -----\nFile: %s\nType: %s\nSize: %.2f MB',
+                    $idx + 1,
+                    count($filesToProcess),
+                    $original,
+                    $mediaType,
+                    $size / (1024 * 1024)
+                ), 'info');
+                
+                if ($size > $maxSize) {
+                    $this->log(sprintf('File too large: %s (%.2f MB > 250 MB)', $original, $size / (1024 * 1024)), 'warning');
                     continue;
                 }
-
-                $original = $file->getClientFilename() ?? 'file';
+                
+                if (strpos($mediaType, 'image/') !== 0 && strpos($mediaType, 'video/') !== 0) {
+                    $this->log(sprintf('Invalid media type: %s (%s)', $original, $mediaType), 'warning');
+                    continue;
+                }
 
                 if ($useCloudinary && $uploader) {
+                    $this->log('Using Cloudinary upload for: ' . $original, 'info');
+                    
                     // Move to temporary file and upload via Cloudinary service
                     $tempPath = TMP . 'uploads' . DIRECTORY_SEPARATOR . uniqid('upl_', true);
                     if (!is_dir(dirname($tempPath))) {
                         mkdir(dirname($tempPath), 0755, true);
                     }
+                    
+                    $this->log('Creating temporary file: ' . $tempPath, 'debug');
+                    
                     $stream = $file->getStream();
                     $stream->rewind();
                     file_put_contents($tempPath, $stream->getContents());
+                    
+                    $this->log('Temporary file created, size: ' . filesize($tempPath) . ' bytes', 'debug');
 
                     // Decide image or video
-                    if (strpos($mediaType, 'image/') === 0) {
-                        $result = $uploader->uploadPostImage($tempPath, 0, null);
-                    } else {
-                        $result = $uploader->uploadPostVideo($tempPath, 0, null);
+                    $isImage = strpos($mediaType, 'image/') === 0;
+                    $this->log('Upload type: ' . ($isImage ? 'image' : 'video'), 'info');
+                    
+                    try {
+                        if ($isImage) {
+                            $this->log('Calling CloudinaryUploader::uploadPostImage()', 'info');
+                            $result = $uploader->uploadPostImage($tempPath, $userId, null);
+                        } else {
+                            $this->log('Calling CloudinaryUploader::uploadPostVideo()', 'info');
+                            $result = $uploader->uploadPostVideo($tempPath, $userId, null);
+                        }
+                        
+                        $this->log('Cloudinary upload result: ' . json_encode($result), 'info');
+                    } catch (\Throwable $uploadError) {
+                        $this->log('Cloudinary upload exception: ' . $uploadError->getMessage(), 'error');
+                        $this->log('Stack trace: ' . $uploadError->getTraceAsString(), 'debug');
+                        $result = ['success' => false, 'error' => $uploadError->getMessage()];
                     }
 
                     if ($result && isset($result['success']) && $result['success']) {
+                        $this->log(sprintf(
+                            'Cloudinary upload success: public_id=%s folder=/posts',
+                            $result['public_id'] ?? 'n/a'
+                        ), 'info');
                         // Cloudinary upload succeeded
                         if (file_exists($tempPath)) {
                             unlink($tempPath);
@@ -115,7 +216,7 @@ class DashboardUploadsController extends AppController
                         ];
                     } else {
                         // Cloudinary failed, fallback to local storage
-                        error_log('Cloudinary upload failed, falling back to local storage');
+                        $this->log('Cloudinary upload failed, falling back to local storage', 'warning');
                         $ext = pathinfo($original, PATHINFO_EXTENSION);
                         $basename = uniqid('att_', true) . ($ext ? '.' . $ext : '');
                         $target = $webrootDir . $basename;
@@ -143,6 +244,7 @@ class DashboardUploadsController extends AppController
                     file_put_contents($target, $stream->getContents());
 
                     $url = $this->request->getAttribute('webroot') . 'uploads/attachments/' . $subdir . '/' . $basename;
+                    $this->log('Stored attachment locally at ' . $url, 'info');
                     $saved[] = [
                         'url' => $url,
                         'original' => $original,
@@ -150,11 +252,22 @@ class DashboardUploadsController extends AppController
                     ];
                 }
             }
+            
+            $this->log('\n===== UPLOAD COMPLETE =====', 'info');
+            $this->log('Total files saved: ' . count($saved), 'info');
+            $this->log('Saved files: ' . json_encode(array_map(function($f) {
+                return ['url' => $f['url'], 'original' => $f['original']];
+            }, $saved)), 'info');
 
             $this->response = $this->response->withType('application/json')
                 ->withStringBody(json_encode(['files' => $saved]));
             return $this->response;
         } catch (\Exception $e) {
+            $this->log('===== UPLOAD ERROR =====', 'error');
+            $this->log('Error message: ' . $e->getMessage(), 'error');
+            $this->log('Error file: ' . $e->getFile() . ':' . $e->getLine(), 'error');
+            $this->log('Stack trace: ' . $e->getTraceAsString(), 'error');
+            
             error_log('Upload error: ' . $e->getMessage());
             error_log('Stack trace: ' . $e->getTraceAsString());
             $this->response = $this->response->withType('application/json')
@@ -172,6 +285,7 @@ class DashboardUploadsController extends AppController
      */
     public function delete()
     {
+        $this->autoRender = false; // Prevent view rendering for JSON response
         $this->request->allowMethod(['post', 'delete']);
         
         try {

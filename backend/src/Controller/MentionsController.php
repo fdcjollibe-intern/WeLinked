@@ -19,15 +19,11 @@ class MentionsController extends AppController
     {
         $this->request->allowMethod(['get']);
         
-        $query = $this->request->getQuery('q', '');
+        $query = trim((string)$this->request->getQuery('q', ''));
         $identity = $this->request->getAttribute('identity');
         
         if (!$identity) {
             return $this->jsonResponse(['success' => false, 'message' => 'Unauthorized'], 401);
-        }
-
-        if (strlen($query) < 1) {
-            return $this->jsonResponse(['success' => true, 'users' => []]);
         }
 
         try {
@@ -42,31 +38,36 @@ class MentionsController extends AppController
                 ->extract('following_id')
                 ->toArray();
             
-            // If user has no friends, search all users
-            if (empty($followingIds)) {
-                $users = $usersTable->find()
-                    ->select(['id', 'username', 'full_name', 'gender', 'profile_photo_path'])
-                    ->where([
-                        'id !=' => $identity->id,
-                        'OR' => [
-                            'username LIKE' => '%' . $query . '%',
-                            'full_name LIKE' => '%' . $query . '%',
-                        ]
-                    ])
-                    ->orderBy(['username' => 'ASC'])
-                    ->limit(10)
-                    ->toArray();
+            $baseConditions = [];
+            if (!empty($followingIds)) {
+                $baseConditions['id IN'] = $followingIds;
             } else {
-                // Search among friends first, then other users
+                // No friends yet, allow searching the rest of the community
+                $baseConditions['id !='] = $identity->id;
+            }
+
+            if ($query !== '') {
+                $baseConditions[] = [
+                    'OR' => [
+                        'username LIKE' => '%' . $query . '%',
+                        'full_name LIKE' => '%' . $query . '%',
+                    ]
+                ];
+            }
+
+            $usersQuery = $usersTable->find()
+                ->select(['id', 'username', 'full_name', 'gender', 'profile_photo_path'])
+                ->where($baseConditions)
+                ->orderBy(['username' => 'ASC'])
+                ->limit(10);
+
+            // If user has friends but query returned empty (e.g., typing text not matching)
+            // fall back to showing first few following profiles to avoid empty dropdowns.
+            $users = $usersQuery->toArray();
+            if (empty($users) && !empty($followingIds) && $query === '') {
                 $users = $usersTable->find()
                     ->select(['id', 'username', 'full_name', 'gender', 'profile_photo_path'])
-                    ->where([
-                        'id IN' => $followingIds,
-                        'OR' => [
-                            'username LIKE' => '%' . $query . '%',
-                            'full_name LIKE' => '%' . $query . '%',
-                        ]
-                    ])
+                    ->where(['id IN' => $followingIds])
                     ->orderBy(['username' => 'ASC'])
                     ->limit(10)
                     ->toArray();

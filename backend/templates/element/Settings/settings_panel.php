@@ -78,42 +78,56 @@
                     </div>
                 </div>
                 
-                <form id="account-form" class="space-y-4" method="post" action="/settings/update-account">
+                <?= $this->Form->create(null, [
+                    'id' => 'account-form',
+                    'type' => 'post',
+                    'url' => ['controller' => 'Settings', 'action' => 'updateAccount'],
+                    'class' => 'space-y-4'
+                ]) ?>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                        <input type="text" 
-                               name="username" 
-                               value="<?= h($user->username) ?>"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors">
+                        <?= $this->Form->control('username', [
+                            'label' => ['text' => 'Username', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
+                            'class' => 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors',
+                            'value' => h($user->username),
+                            'required' => true
+                        ]) ?>
                         <p class="text-xs text-gray-500 mt-1">Your unique username for the platform</p>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                        <input type="text" 
-                               name="full_name" 
-                               value="<?= h($user->full_name) ?>"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors">
+                        <?= $this->Form->control('full_name', [
+                            'label' => ['text' => 'Full Name', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
+                            'class' => 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors',
+                            'value' => h($user->full_name),
+                            'required' => true
+                        ]) ?>
                         <p class="text-xs text-gray-500 mt-1">Your display name that others will see</p>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                        <input type="email" 
-                               value="<?= h($user->email) ?>"
-                               disabled
-                               class="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 text-sm cursor-not-allowed">
+                        <?= $this->Form->control('email', [
+                            'type' => 'email',
+                            'label' => ['text' => 'Email Address', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
+                            'class' => 'w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 text-sm cursor-not-allowed',
+                            'value' => h($user->email),
+                            'disabled' => true
+                        ]) ?>
                         <p class="text-xs text-gray-500 mt-1">Email address cannot be changed for security reasons</p>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                        <select name="gender" 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors">
-                            <option value="Prefer not to say" <?= ($user->gender ?? 'Prefer not to say') === 'Prefer not to say' ? 'selected' : '' ?>>Prefer not to say</option>
-                            <option value="Male" <?= ($user->gender ?? '') === 'Male' ? 'selected' : '' ?>>Male</option>
-                            <option value="Female" <?= ($user->gender ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
-                        </select>
+                        <?= $this->Form->control('gender', [
+                            'type' => 'select',
+                            'label' => ['text' => 'Gender', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
+                            'class' => 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors',
+                            'options' => [
+                                'Prefer not to say' => 'Prefer not to say',
+                                'Male' => 'Male',
+                                'Female' => 'Female'
+                            ],
+                            'value' => h($user->gender ?? 'Prefer not to say'),
+                            'empty' => false
+                        ]) ?>
                         <p class="text-xs text-gray-500 mt-1">Your gender (optional)</p>
                     </div>
                     
@@ -148,12 +162,12 @@
                     </div>
                     
                     <div class="flex justify-end pt-2">
-                        <button type="submit" 
-                                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm shadow-sm hover:shadow-md">
-                            Save Changes
-                        </button>
+                        <?= $this->Form->button('Save Changes', [
+                            'type' => 'submit',
+                            'class' => 'px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm shadow-sm hover:shadow-md'
+                        ]) ?>
                     </div>
-                </form>
+                <?= $this->Form->end() ?>
             </div>
             <?php endif; ?>
             
@@ -173,35 +187,46 @@
                 <!-- Change Password -->
                 <div class="mb-6 pb-6 border-b border-gray-200">
                     <h4 class="font-medium text-gray-900 mb-3">Change Password</h4>
-                    <form id="password-form" class="space-y-3" method="post" action="/settings/update-password">
+                    <?= $this->Form->create(null, [
+                        'id' => 'password-form',
+                        'type' => 'post',
+                        'url' => ['controller' => 'Settings', 'action' => 'updatePassword'],
+                        'class' => 'space-y-3'
+                    ]) ?>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
-                            <input type="password" 
-                                   name="current_password"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors">
+                            <?= $this->Form->control('current_password', [
+                                'type' => 'password',
+                                'label' => ['text' => 'Current Password', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
+                                'class' => 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors',
+                                'required' => true
+                            ]) ?>
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                            <input type="password" 
-                                   name="new_password"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors">
+                            <?= $this->Form->control('new_password', [
+                                'type' => 'password',
+                                'label' => ['text' => 'New Password', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
+                                'class' => 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors',
+                                'required' => true
+                            ]) ?>
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                            <input type="password" 
-                                   name="confirm_password"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors">
+                            <?= $this->Form->control('confirm_password', [
+                                'type' => 'password',
+                                'label' => ['text' => 'Confirm New Password', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
+                                'class' => 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors',
+                                'required' => true
+                            ]) ?>
                         </div>
                         
                         <div class="flex justify-end pt-2">
-                            <button type="submit" 
-                                    class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm shadow-sm hover:shadow-md">
-                                Update Password
-                            </button>
+                            <?= $this->Form->button('Update Password', [
+                                'type' => 'submit',
+                                'class' => 'px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm shadow-sm hover:shadow-md'
+                            ]) ?>
                         </div>
-                    </form>
+                    <?= $this->Form->end() ?>
                 </div>
                 
                 <!-- Two-Factor Authentication -->
@@ -236,7 +261,12 @@
                     </div>
                 </div>
                 
-                <form id="theme-form" class="space-y-3" method="post" action="/settings/update-theme">
+                <?= $this->Form->create(null, [
+                    'id' => 'theme-form',
+                    'type' => 'post',
+                    'url' => ['controller' => 'Settings', 'action' => 'updateTheme'],
+                    'class' => 'space-y-3'
+                ]) ?>
                     <div class="grid gap-3">
                         <label class="flex items-center p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors hover:border-blue-300">
                             <input type="radio" name="theme" value="system" <?= $user->theme_preference === 'system' ? 'checked' : '' ?> class="w-4 h-4 text-blue-600">
@@ -275,12 +305,12 @@
                     </div>
                     
                     <div class="flex justify-end pt-2">
-                        <button type="submit" 
-                                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm shadow-sm hover:shadow-md">
-                            Save Theme
-                        </button>
+                        <?= $this->Form->button('Save Theme', [
+                            'type' => 'submit',
+                            'class' => 'px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm shadow-sm hover:shadow-md'
+                        ]) ?>
                     </div>
-                </form>
+                <?= $this->Form->end() ?>
             </div>
             <?php endif; ?>
         

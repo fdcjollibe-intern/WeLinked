@@ -5,8 +5,8 @@
 ?>
 <?= $this->Html->css('dashboard') ?>
 <script>
-    // Expose CSRF token for JavaScript
     window.csrfToken = '<?= $this->request->getAttribute('csrfToken') ?>';
+    window.currentUserId = <?= json_encode($currentUser->id ?? null) ?>;
 </script>
 
 <!-- Desktop / large view navbar -->
@@ -42,15 +42,12 @@
                     <span id="notifications-badge" class="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
                 </button>
             </div>
-            <button class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            <button id="theme-toggle" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
+                <svg id="theme-icon-sun" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1m-16 0H1m15.364 1.636l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
                 </svg>
-            </button>
-            <button class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <svg id="theme-icon-moon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M21.64 15.95c-.18-.81-.46-1.58-.84-2.29.58-.45 1.13-.9 1.62-1.44-.09.83-.3 1.64-.63 2.41.25-.32.47-.68.64-1.07-.38.88-.9 1.68-1.54 2.39.07-.36.12-.72.12-1.09-.59.23-1.2.42-1.81.59.03-.05.07-.1.1-.15-.67.55-1.42 1.03-2.24 1.39.25-.03.5-.1.75-.18-.5.84-1.27 1.55-2.17 2.06.01.23.02.45.02.68 0 .59-.03 1.17-.1 1.75 1.5-1.22 2.77-2.95 3.37-4.96zm-9.28 9.28c.15.12.3.25.43.39 2.04-1.22 3.81-2.95 5.05-5 .28-.51.54-1.04.76-1.59-.97 1.96-2.5 3.64-4.38 4.8.14.17.29.33.44.48z"/>
                 </svg>
             </button>
             <!-- Profile Avatar with gradient border -->
@@ -122,7 +119,6 @@
 
         <!-- Center Content Area -->
         <main id="middle-component" class="flex-1 min-w-0 px-4 lg:px-8">
-            <!-- Empty by default - will be populated by JavaScript -->
         </main>
 
         <!-- Right Sidebar -->
@@ -194,9 +190,9 @@
 <script src="/js/dashboard.js"></script>
 <script src="/js/mentions.js"></script>
 <script src="/js/middle.js"></script>
+<script src="/js/comments.js"></script>
 <script src="/js/reactions.js"></script>
 <script src="/js/gallery.js"></script>
 <script src="/js/composer-modal.js"></script>
-<script src="/js/post-composer.js"></script>
 <script src="/js/notifications.js"></script>
 <script src="/js/search.js"></script>

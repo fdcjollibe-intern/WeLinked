@@ -54,8 +54,8 @@ class UsersController extends AppController
                 ]));
         }
 
-        $this->loadModel('Users');
-        $user = $this->Users->find()
+        $usersTable = $this->fetchTable('Users');
+        $user = $usersTable->find()
             ->select([
                 'id',
                 'username',

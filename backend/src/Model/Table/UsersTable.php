@@ -68,6 +68,17 @@ class UsersTable extends Table
             ->requirePresence('password_hash', 'create')
             ->notEmptyString('password_hash');
 
+        $validator
+            ->scalar('bio')
+            ->maxLength('bio', 180, 'Bio cannot exceed 180 characters')
+            ->allowEmptyString('bio');
+
+        $validator
+            ->scalar('website')
+            ->maxLength('website', 180, 'Website URL cannot exceed 180 characters')
+            ->allowEmptyString('website')
+            ->url('website', 'Please enter a valid URL');
+
         return $validator;
     }
 

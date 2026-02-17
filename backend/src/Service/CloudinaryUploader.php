@@ -167,7 +167,7 @@ class CloudinaryUploader
     }
 
     /**
-     * Delete resource from Cloudinary
+     * Delete resource from Cloudinary using Admin API
      * 
      * @param string $publicId Public ID of the resource
      * @param string $resourceType 'image' or 'video'
@@ -176,11 +176,19 @@ class CloudinaryUploader
     public function delete(string $publicId, string $resourceType = 'image'): bool
     {
         try {
-            $this->cloudinary->uploadApi()->destroy($publicId, [
-                'resource_type' => $resourceType,
-                'invalidate' => true,
-            ]);
-            return true;
+            // Use Admin API delete_resources method
+            $result = $this->cloudinary->adminApi()->deleteAssets(
+                [$publicId], // Array of public IDs (supports up to 100)
+                [
+                    'resource_type' => $resourceType,
+                    'type' => 'upload', // Delivery type
+                    'invalidate' => true, // Invalidate CDN cache
+                ]
+            );
+            
+            // Check if deletion was successful
+            $deleted = $result['deleted'] ?? [];
+            return isset($deleted[$publicId]) && $deleted[$publicId] === 'deleted';
         } catch (\Exception $e) {
             error_log('Cloudinary delete error: ' . $e->getMessage());
             return false;
