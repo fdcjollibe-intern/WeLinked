@@ -22,6 +22,7 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/profile/{username}', ['controller' => 'Profile', 'action' => 'index', '_name' => 'profile_view'])
             ->setPass(['username'])
             ->setPatterns(['username' => '[a-zA-Z0-9_.]+']);
+
         // Fallback last to catch any extra /profile/{username}/* paths (e.g., legacy tabs)
         $builder->connect('/profile/{username}/*', ['controller' => 'Profile', 'action' => 'index', '_name' => 'profile_fallback'])
             ->setPass(['username'])
@@ -83,6 +84,7 @@ return function (RouteBuilder $routes): void {
         // Comments API
         $builder->connect('/dashboard/comments/create', ['controller' => 'DashboardComments', 'action' => 'create']);
         $builder->connect('/dashboard/comments/list', ['controller' => 'DashboardComments', 'action' => 'list']);
+        $builder->connect('/dashboard/comments/edit', ['controller' => 'DashboardComments', 'action' => 'edit']);
         $builder->connect('/dashboard/comments/delete', ['controller' => 'DashboardComments', 'action' => 'delete']);
         
         // Reactions API (toggle/add/remove)
@@ -119,20 +121,4 @@ return function (RouteBuilder $routes): void {
         // Enable fallbacks for any unmatched routes
         $builder->fallbacks();
     });
-
-    /*
-     * If you need a different set of middleware or none at all,
-     * open new scope and define routes there.
-     *
-     * ```
-     * $routes->scope('/api', function (RouteBuilder $builder): void {
-     *     // No $builder->applyMiddleware() here.
-     *
-     *     // Parse specified extensions from URLs
-     *     // $builder->setExtensions(['json', 'xml']);
-     *
-     *     // Connect API actions here.
-     * });
-     * ```
-     */
 };

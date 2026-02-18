@@ -111,6 +111,7 @@ class ProfileController extends AppController
      */
     public function followers($username = null)
     {
+        $this->autoRender = false;
         $this->request->allowMethod(['get']);
         
         $identity = $this->request->getAttribute('identity');
@@ -168,6 +169,7 @@ class ProfileController extends AppController
      */
     public function following($username = null)
     {
+        $this->autoRender = false;
         $this->request->allowMethod(['get']);
         
         $identity = $this->request->getAttribute('identity');

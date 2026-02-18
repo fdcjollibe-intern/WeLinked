@@ -226,6 +226,23 @@ class DashboardPostsController extends AppController
                 $post->location = $data['location'];
             }
             
+            // Handle attachment removals
+            $removeAttachments = $data['remove_attachments'] ?? [];
+            if (!empty($removeAttachments)) {
+                $attachmentsTable = $this->fetchTable('PostAttachments');
+                foreach ($removeAttachments as $url) {
+                    $attachmentsTable->deleteAll([
+                        'post_id' => $postId,
+                        'file_path' => $url
+                    ]);
+                }
+                
+                // If old content_image_path matches any removed URL, clear it
+                if (!empty($post->content_image_path) && in_array($post->content_image_path, $removeAttachments)) {
+                    $post->content_image_path = null;
+                }
+            }
+            
             if ($postsTable->save($post)) {
                 // Update mentions if provided
                 if (isset($data['mentions'])) {
@@ -256,7 +273,7 @@ class DashboardPostsController extends AppController
     }
 
     /**
-     * Delete a post (soft delete)
+     * Delete a post (soft delete) with cascade hard delete of related data
      */
     public function delete($postId = null)
     {
@@ -278,10 +295,13 @@ class DashboardPostsController extends AppController
                 return $this->jsonResponse(['success' => false, 'message' => 'Post not found or unauthorized'], 404);
             }
             
-            // Soft delete
+            // Soft delete the post
             $post->deleted_at = new \DateTime();
             
             if ($postsTable->save($post)) {
+                // Cascade hard delete: comments, reactions, mentions, notifications
+                $this->cascadeDeletePostData((int)$postId);
+                
                 return $this->jsonResponse([
                     'success' => true,
                     'message' => 'Post deleted successfully'
@@ -292,6 +312,69 @@ class DashboardPostsController extends AppController
         } catch (\Exception $e) {
             error_log('Post delete error: ' . $e->getMessage());
             return $this->jsonResponse(['success' => false, 'message' => 'An error occurred'], 500);
+        }
+    }
+
+    /**
+     * Cascade hard delete all related data when a post is deleted
+     * Deletes: comments (and comment reactions), post reactions, mentions, notifications, attachments
+     */
+    private function cascadeDeletePostData(int $postId): void
+    {
+        try {
+            // Get all comment IDs for this post (to delete comment reactions)
+            $commentsTable = $this->fetchTable('Comments');
+            $commentIds = $commentsTable->find()
+                ->select(['id'])
+                ->where(['post_id' => $postId])
+                ->all()
+                ->extract('id')
+                ->toList();
+            
+            // Delete reactions on comments
+            if (!empty($commentIds)) {
+                $reactionsTable = $this->fetchTable('Reactions');
+                $reactionsTable->deleteAll([
+                    'target_type' => 'comment',
+                    'target_id IN' => $commentIds
+                ]);
+            }
+            
+            // Delete comments
+            $commentsTable->deleteAll(['post_id' => $postId]);
+            
+            // Delete post reactions
+            $reactionsTable = $this->fetchTable('Reactions');
+            $reactionsTable->deleteAll([
+                'target_type' => 'post',
+                'target_id' => $postId
+            ]);
+            
+            // Delete mentions
+            $mentionsTable = $this->fetchTable('Mentions');
+            $mentionsTable->deleteAll(['post_id' => $postId]);
+            
+            // Delete notifications related to this post
+            $notificationsTable = $this->fetchTable('Notifications');
+            $notificationsTable->deleteAll([
+                'target_type' => 'post',
+                'target_id' => $postId
+            ]);
+            
+            // Delete post attachments
+            $attachmentsTable = $this->fetchTable('PostAttachments');
+            $attachmentsTable->deleteAll(['post_id' => $postId]);
+            
+            // Delete likes (legacy table)
+            $likesTable = $this->fetchTable('Likes');
+            $likesTable->deleteAll([
+                'target_type' => 'post',
+                'target_id' => $postId
+            ]);
+            
+        } catch (\Exception $e) {
+            // Log but don't fail the main delete operation
+            error_log('Cascade delete error for post ' . $postId . ': ' . $e->getMessage());
         }
     }
 

@@ -174,7 +174,7 @@ $navHasPhoto = !empty($currentUser->profile_photo_path);
                     'love' => '🥰',
                     'wow' => '😮',
                     'sad' => '😢',
-                    'angry' => '😠'
+                    'angry' => '😡'
                 ];
                 ?>
                 <?php foreach ($results as $post): ?>
@@ -271,12 +271,16 @@ $navHasPhoto = !empty($currentUser->profile_photo_path);
                                 foreach ($imageAttachments as $img) {
                                     if (is_array($img) && isset($img['file_path'])) {
                                         $imageUrls[] = $img['file_path'];
-                                    } elseif (is_string($img)) {
+                                    } elseif (is_string($img) && !empty(trim($img))) {
                                         $imageUrls[] = $img;
                                     }
                                 }
+                                // Re-index array to ensure sequential keys
+                                $imageUrls = array_values($imageUrls);
                                 ?>
-                                <?php if (count($imageUrls) === 1): ?>
+                                <?php if (count($imageUrls) === 0): ?>
+                                    <!-- No valid image URLs -->
+                                <?php elseif (count($imageUrls) === 1): ?>
                                     <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-auto object-cover">
                                 <?php elseif (count($imageUrls) === 2): ?>
                                     <div class="grid grid-cols-2 gap-2">
@@ -292,7 +296,7 @@ $navHasPhoto = !empty($currentUser->profile_photo_path);
                                             <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover">
                                         </div>
                                     </div>
-                                <?php else: ?>
+                                <?php elseif (count($imageUrls) >= 4): ?>
                                     <!-- 4+ photos: show 3 with +N overlay -->
                                     <div class="grid grid-cols-2 gap-2">
                                         <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">

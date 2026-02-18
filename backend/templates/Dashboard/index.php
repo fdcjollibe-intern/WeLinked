@@ -62,7 +62,7 @@
                         >
                         <div
                             data-avatar-fallback="current-user"
-                            class="w-full h-full rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-sm <?= $navHasPhoto ? 'hidden' : '' ?>"
+                            class="w-full h-full rounded-full flex items-center justify-center text-white font-semibold text-sm <?= $navHasPhoto ? 'hidden' : '' ?>"
                         >
                             <span data-user-initial><?= strtoupper(substr($currentUser->username ?? 'U', 0, 1)) ?></span>
                         </div>
@@ -72,6 +72,9 @@
         </div>
     </div>
 </nav>
+
+
+
 <?php else: ?>
 <!-- Mobile top bar: logo (eLinked) + right icons -->
 <nav class="bg-white border-b fixed top-0 left-0 right-0 z-50 h-14 flex items-center px-4">
@@ -173,7 +176,7 @@
                         >
                         <div
                             data-avatar-fallback="current-user"
-                            class="w-full h-full rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-semibold <?= $navHasPhoto ? 'hidden' : '' ?>"
+                            class="w-full h-full rounded-full flex items-center justify-center text-white text-xs font-semibold <?= $navHasPhoto ? 'hidden' : '' ?>"
                         >
                             <span data-user-initial><?= strtoupper(substr($currentUser->username ?? 'U', 0, 1)) ?></span>
                         </div>
@@ -195,4 +198,5 @@
 <script src="/js/gallery.js"></script>
 <script src="/js/composer-modal.js"></script>
 <script src="/js/notifications.js"></script>
+<script src="/js/post-composer.js"></script>
 <script src="/js/search.js"></script>

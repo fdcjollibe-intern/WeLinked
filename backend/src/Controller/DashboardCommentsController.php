@@ -98,7 +98,7 @@ class DashboardCommentsController extends AppController
         try {
             $commentsTable = $this->fetchTable('Comments');
             $comments = $commentsTable->find()
-                ->where(['post_id' => $postId])
+                ->where(['post_id' => $postId, 'deleted_at IS' => null])
                 ->orderByAsc('created_at')
                 ->all();
 
@@ -166,6 +166,80 @@ class DashboardCommentsController extends AppController
         }
     }
 
+    public function edit()
+    {
+        $this->request->allowMethod(['post']);
+        $identity = $this->request->getAttribute('identity');
+        if (!$identity) {
+            return $this->jsonResponse(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $data = $this->getJsonData();
+        $commentId = (int)($data['comment_id'] ?? 0);
+        $contentText = trim((string)($data['content_text'] ?? ''));
+        $removeAttachment = (bool)($data['remove_attachment'] ?? false);
+        
+        if ($commentId <= 0) {
+            return $this->jsonResponse([
+                'success' => false,
+                'message' => 'Comment ID is required'
+            ], 400);
+        }
+
+        try {
+            $commentsTable = $this->fetchTable('Comments');
+            $comment = $commentsTable->find()
+                ->where(['id' => $commentId, 'deleted_at IS' => null])
+                ->first();
+
+            if (!$comment) {
+                return $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'Comment not found'
+                ], 404);
+            }
+
+            // Only comment owner can edit
+            if ($comment->user_id !== $identity->id) {
+                return $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'You do not have permission to edit this comment'
+                ], 403);
+            }
+
+            // Update content
+            $comment->content_text = $contentText;
+            
+            // Remove attachment if requested
+            if ($removeAttachment) {
+                $comment->content_image_path = null;
+            }
+
+            if ($commentsTable->save($comment)) {
+                return $this->jsonResponse([
+                    'success' => true,
+                    'message' => 'Comment updated successfully',
+                    'comment' => [
+                        'id' => $comment->id,
+                        'content_text' => $comment->content_text,
+                        'attachment_url' => $comment->content_image_path ?? null,
+                    ]
+                ]);
+            }
+
+            return $this->jsonResponse([
+                'success' => false,
+                'message' => 'Unable to update comment'
+            ], 400);
+        } catch (\Exception $e) {
+            $this->log('Comment edit error: ' . $e->getMessage(), 'error');
+            return $this->jsonResponse([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+
     public function delete()
     {
         $this->request->allowMethod(['post']);
@@ -186,7 +260,7 @@ class DashboardCommentsController extends AppController
         try {
             $commentsTable = $this->fetchTable('Comments');
             $comment = $commentsTable->find()
-                ->where(['id' => $commentId])
+                ->where(['id' => $commentId, 'deleted_at IS' => null])
                 ->first();
 
             if (!$comment) {
@@ -210,7 +284,24 @@ class DashboardCommentsController extends AppController
                 ], 403);
             }
 
-            if ($commentsTable->delete($comment)) {
+            // Soft delete the comment
+            $comment->deleted_at = new \DateTime();
+            
+            if ($commentsTable->save($comment)) {
+                // Hard delete comment reactions
+                $reactionsTable = $this->fetchTable('Reactions');
+                $reactionsTable->deleteAll([
+                    'target_type' => 'comment',
+                    'target_id' => $commentId
+                ]);
+                
+                // Delete notifications related to this comment
+                $notificationsTable = $this->fetchTable('Notifications');
+                $notificationsTable->deleteAll([
+                    'target_type' => 'comment',
+                    'target_id' => $commentId
+                ]);
+                
                 return $this->jsonResponse([
                     'success' => true,
                     'message' => 'Comment deleted successfully'

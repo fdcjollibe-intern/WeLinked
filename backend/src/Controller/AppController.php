@@ -106,11 +106,29 @@ class AppController extends Controller
         }
 
         if ($userData) {
-            if (is_object($userData) && !isset($userData->fullname)) {
+            // Convert to stdClass to avoid dynamic property deprecation warnings on Identity/Entity objects
+            if (is_object($userData) && !($userData instanceof \stdClass)) {
+                if (method_exists($userData, 'toArray')) {
+                    $userArray = $userData->toArray();
+                } else {
+                    $userArray = [
+                        'id' => $userData->id ?? null,
+                        'username' => $userData->username ?? null,
+                        'full_name' => $userData->full_name ?? null,
+                        'profile_photo_path' => $userData->profile_photo_path ?? null,
+                    ];
+                }
                 // Mirror fullname accessor some views expect
-                $userData->fullname = $extractValue($userData, 'full_name');
-            } elseif (is_array($userData) && empty($userData['fullname']) && !empty($userData['full_name'])) {
-                $userData['fullname'] = $userData['full_name'];
+                if (empty($userArray['fullname']) && !empty($userArray['full_name'])) {
+                    $userArray['fullname'] = $userArray['full_name'];
+                }
+                $userData = (object) $userArray;
+            } elseif (is_array($userData)) {
+                // Mirror fullname accessor some views expect
+                if (empty($userData['fullname']) && !empty($userData['full_name'])) {
+                    $userData['fullname'] = $userData['full_name'];
+                }
+                $userData = (object) $userData;
             }
 
             $this->set('currentUser', $userData);

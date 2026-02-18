@@ -13,7 +13,7 @@
                     >
                     <div
                         data-avatar-fallback="current-user"
-                        class="w-full h-full rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-bold <?= $hasProfilePhoto ? 'hidden' : '' ?>"
+                        class="w-full h-full rounded-full flex items-center justify-center text-white text-2xl font-bold <?= $hasProfilePhoto ? 'hidden' : '' ?>"
                     >
                         <span data-user-initial><?= strtoupper(substr($currentUser->username ?? 'U', 0, 1)) ?></span>
                     </div>
@@ -211,7 +211,9 @@
                 insertFragment(middleColumn, html);
                 middleColumn.scrollTop = 0;
                 // Dispatch an event for other scripts to initialize themselves
-                middleColumn.dispatchEvent(new CustomEvent('fragment:loaded'));
+                middleColumn.dispatchEvent(new CustomEvent('fragment:loaded', { 
+                    detail: { path: url, container: 'middle-component' } 
+                }));
             })
             .catch(err => console.error('Failed to load content:', err));
         }
@@ -242,7 +244,7 @@
                 loadMiddleColumn('/settings');
                 history.pushState({}, '', '/settings');
             } else if (action === 'home') {
-                loadMiddleColumn('/dashboard');
+                loadMiddleColumn('/dashboard/middle-column');
                 history.pushState({}, '', '/dashboard');
             } else if (action === 'friends') {
                 loadMiddleColumn('/friends');
@@ -291,10 +293,10 @@
             loadMiddleColumn('/friends');
             updateNavigationState('friends');
         } else if (currentPath.includes('/search')) {
-            loadMiddleColumn('/search');
+            loadMiddleColumn(currentPath + window.location.search);
             updateNavigationState('search');
         } else if (currentPath === '/dashboard' || currentPath === '/') {
-            loadMiddleColumn('/dashboard');
+            loadMiddleColumn('/dashboard/middle-column');
             updateNavigationState('home');
         }
         });

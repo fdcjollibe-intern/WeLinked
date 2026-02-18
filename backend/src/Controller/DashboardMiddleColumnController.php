@@ -100,8 +100,7 @@ class DashboardMiddleColumnController extends AppController
             // For 'foryou', show all posts (no additional filter needed)
 
             // Randomize order so results are not sequential from DB.
-            // For both 'foryou' (all posts) and 'friends' (followed users),
-            // return a random selection to satisfy the UX requirement.
+            // For both 'foryou' (all posts) and 'friends' (followed users)
             $query->orderBy($query->func()->rand())
                 ->limit($limit)
                 ->offset($start);

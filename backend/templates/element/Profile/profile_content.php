@@ -45,10 +45,10 @@ if (!function_exists('profile_time_ago')) {
 $reactionEmojis = [
     'like' => '❤️',
     'haha' => '😆',
-    'love' => '😍',
+    'love' => '🥰',
     'wow' => '😮',
     'sad' => '😢',
-    'angry' => '😠',
+    'angry' => '😡',
 ];
 ?>
 <!-- Profile Section -->
@@ -207,11 +207,38 @@ $reactionEmojis = [
                                     <p class="text-xs text-gray-400"><?= h(profile_time_ago($post->created_at)) ?></p>
                                 </div>
                             </div>
+                            <?php 
+                                $isPostOwner = isset($identity->id) && isset($post->user_id) && (int)$identity->id === (int)$post->user_id;
+                            ?>
+                            <?php if ($isPostOwner): ?>
+                            <div class="relative post-menu-container">
+                                <button class="post-menu-btn text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors" data-post-id="<?= h($post->id) ?>">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z"/>
+                                    </svg>
+                                </button>
+                                <div class="post-menu-dropdown hidden absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                    <button class="post-edit-btn w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2" data-post-id="<?= h($post->id) ?>">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                        <span>Edit Post</span>
+                                    </button>
+                                    <button class="post-delete-btn w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2" data-post-id="<?= h($post->id) ?>">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                        <span>Delete Post</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <?php else: ?>
                             <button class="text-gray-400 hover:text-gray-600">
                                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z"/>
                                 </svg>
                             </button>
+                            <?php endif; ?>
                         </div>
 
                         <?php if (!empty($post->content_text)): ?>
@@ -395,7 +422,21 @@ $reactionEmojis = [
         </div>
     </div>
 </div>
-
+<!-- Unfollow Confirmation Modal -->
+<div id="unfollow-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl transform transition-all">
+        <h3 class="text-xl font-semibold text-center mb-2">Unfollow User</h3>
+        <p class="text-gray-600 text-center mb-6" id="unfollow-message">Are you sure you want to unfollow this user?</p>
+        <div class="flex gap-3">
+            <button id="unfollow-cancel" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+                Cancel
+            </button>
+            <button id="unfollow-confirm" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors">
+                Unfollow
+            </button>
+        </div>
+    </div>
+</div>
 <script>
 (function() {
     const modal = document.getElementById('followers-modal');
@@ -592,13 +633,42 @@ $reactionEmojis = [
         });
     });
     
-    document.addEventListener('click', function(e) {
-        const unfollowBtn = e.target.closest('.unfollow-user-btn');
-        if (!unfollowBtn) return;
+    // Unfollow confirmation modal
+    const unfollowModal = document.getElementById('unfollow-modal');
+    const unfollowMessage = document.getElementById('unfollow-message');
+    const unfollowConfirmBtn = document.getElementById('unfollow-confirm');
+    const unfollowCancelBtn = document.getElementById('unfollow-cancel');
+    let pendingUnfollowUserId = null;
+    let pendingUnfollowBtn = null;
+
+    function showUnfollowModal(userId, username, btnElement) {
+        pendingUnfollowUserId = userId;
+        pendingUnfollowBtn = btnElement;
+        unfollowMessage.textContent = username ? `Are you sure you want to unfollow @${username}?` : 'Are you sure you want to unfollow this user?';
+        unfollowModal.classList.remove('hidden');
+    }
+
+    function hideUnfollowModal() {
+        unfollowModal.classList.add('hidden');
+        pendingUnfollowUserId = null;
+        pendingUnfollowBtn = null;
+    }
+
+    unfollowCancelBtn?.addEventListener('click', hideUnfollowModal);
+    
+    unfollowModal?.addEventListener('click', function(e) {
+        if (e.target === unfollowModal) {
+            hideUnfollowModal();
+        }
+    });
+
+    unfollowConfirmBtn?.addEventListener('click', function() {
+        if (!pendingUnfollowUserId || !pendingUnfollowBtn) return;
         
-        const userId = unfollowBtn.dataset.userId;
+        const userId = pendingUnfollowUserId;
+        const unfollowBtn = pendingUnfollowBtn;
         
-        if (!confirm(`Unfollow this user?`)) return;
+        hideUnfollowModal();
         
         unfollowBtn.disabled = true;
         unfollowBtn.textContent = 'Unfollowing...';
@@ -609,17 +679,30 @@ $reactionEmojis = [
             if (data.success) {
                 loadData(currentTab);
             } else {
-                alert(data.message || 'Failed to unfollow user');
+                showToast(data.message || 'Failed to unfollow user');
                 unfollowBtn.disabled = false;
                 unfollowBtn.textContent = 'Unfollow';
             }
         })
         .catch(error => {
             console.error('Unfollow error:', error);
-            alert('An error occurred');
+            showToast('An error occurred while unfollowing');
             unfollowBtn.disabled = false;
             unfollowBtn.textContent = 'Unfollow';
         });
+    });
+
+    document.addEventListener('click', function(e) {
+        const unfollowBtn = e.target.closest('.unfollow-user-btn');
+        if (!unfollowBtn) return;
+        
+        const userId = unfollowBtn.dataset.userId;
+        // Find username from the parent container
+        const userContainer = unfollowBtn.closest('[data-modal-user-id]');
+        const usernameElement = userContainer?.querySelector('[data-username-display]');
+        const username = usernameElement?.textContent?.replace(/^@/, '').trim() || '';
+        
+        showUnfollowModal(userId, username, unfollowBtn);
     });
     
     function updateHeroAvatar(detail) {
@@ -768,6 +851,20 @@ $reactionEmojis = [
         const div = document.createElement('div');
         div.textContent = text == null ? '' : text;
         return div.innerHTML;
+    }
+    
+    function showToast(text) {
+        let t = document.getElementById('profile-toast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'profile-toast';
+            t.className = 'fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded shadow-lg z-50 transition-opacity duration-300';
+            t.style.opacity = '0';
+            document.body.appendChild(t);
+        }
+        t.textContent = text;
+        t.style.opacity = '1';
+        setTimeout(() => { if (t) t.style.opacity = '0'; }, 3000);
     }
 })();
 </script>

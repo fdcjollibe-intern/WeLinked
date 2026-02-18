@@ -170,6 +170,22 @@
     </div>
 </section>
 
+<!-- Unfollow Confirmation Modal -->
+<div id="unfollow-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl transform transition-all">
+        <h3 class="text-xl font-semibold text-center mb-2">Unfollow User</h3>
+        <p class="text-gray-600 text-center mb-6" id="unfollow-message">Are you sure you want to unfollow this user?</p>
+        <div class="flex gap-3">
+            <button id="unfollow-cancel" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+                Cancel
+            </button>
+            <button id="unfollow-confirm" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors">
+                Unfollow
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 // Tab switching
 document.addEventListener('click', function(e) {
@@ -223,20 +239,114 @@ document.addEventListener('click', function(e) {
             followBtn.classList.add('unfollow-btn', 'bg-white', 'hover:bg-red-50', 'border', 'border-gray-200', 'hover:border-red-300', 'text-gray-600', 'hover:text-red-600');
             followBtn.disabled = false;
         } else {
-            alert('Failed to follow: ' + (data.message || 'Unknown error'));
+            showToast('Failed to follow: ' + (data.message || 'Unknown error'));
             followBtn.disabled = false;
             followBtn.textContent = 'Follow Back';
         }
     })
     .catch(error => {
         console.error('Follow error:', error);
-        alert('An error occurred while following');
+        showToast('An error occurred while following');
         followBtn.disabled = false;
         followBtn.textContent = 'Follow Back';
     });
 });
 
 // Handle unfollow action
+let pendingUnfollowUserId = null;
+let pendingUnfollowUsername = null;
+let pendingUnfollowBtn = null;
+
+const unfollowModal = document.getElementById('unfollow-modal');
+const unfollowMessage = document.getElementById('unfollow-message');
+const unfollowConfirmBtn = document.getElementById('unfollow-confirm');
+const unfollowCancelBtn = document.getElementById('unfollow-cancel');
+
+function showUnfollowModal(userId, username, btnElement) {
+    pendingUnfollowUserId = userId;
+    pendingUnfollowUsername = username;
+    pendingUnfollowBtn = btnElement;
+    unfollowMessage.textContent = `Are you sure you want to unfollow @${username}?`;
+    unfollowModal.classList.remove('hidden');
+}
+
+function hideUnfollowModal() {
+    unfollowModal.classList.add('hidden');
+    pendingUnfollowUserId = null;
+    pendingUnfollowUsername = null;
+    pendingUnfollowBtn = null;
+}
+
+unfollowCancelBtn?.addEventListener('click', hideUnfollowModal);
+
+unfollowModal?.addEventListener('click', function(e) {
+    if (e.target === unfollowModal) {
+        hideUnfollowModal();
+    }
+});
+
+unfollowConfirmBtn?.addEventListener('click', async function() {
+    if (!pendingUnfollowUserId || !pendingUnfollowBtn) return;
+    
+    const userId = pendingUnfollowUserId;
+    const unfollowBtn = pendingUnfollowBtn;
+    
+    hideUnfollowModal();
+    
+    unfollowBtn.disabled = true;
+    const originalText = unfollowBtn.textContent;
+    unfollowBtn.textContent = 'Unfollowing...';
+
+    try {
+        const response = await fetch('/friends/unfollow', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ user_id: userId })
+        });
+
+        if (!response.ok) {
+            throw new Error('Server returned an error');
+        }
+
+        const data = await response.json();
+
+        if (data && data.success) {
+            // Remove card from DOM with animation
+            const card = unfollowBtn.closest('.bg-white');
+            if (card) {
+                card.style.transition = 'opacity 220ms, transform 220ms';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    card.remove();
+
+                    // If empty, reload to show empty state
+                    const activeTab = document.querySelector('.friends-tab.border-blue-500');
+                    if (activeTab) {
+                        const grid = document.querySelector(`#${activeTab.dataset.tab}-content .grid`);
+                        if (grid && grid.children.length === 0) {
+                            location.reload();
+                        }
+                    }
+                }, 260);
+            }
+            showToast('Successfully unfollowed');
+        } else {
+            showToast('Failed to unfollow: ' + (data && data.message ? data.message : 'Unknown error'));
+            unfollowBtn.disabled = false;
+            unfollowBtn.textContent = originalText;
+        }
+    } catch (error) {
+        console.error('Unfollow error:', error);
+        showToast('An error occurred while unfollowing');
+        unfollowBtn.disabled = false;
+        unfollowBtn.textContent = originalText;
+    }
+});
+
 document.addEventListener('click', function(e) {
     const unfollowBtn = e.target.closest('.unfollow-btn');
     if (!unfollowBtn) return;
@@ -244,117 +354,8 @@ document.addEventListener('click', function(e) {
     const userId = unfollowBtn.dataset.userId;
     const username = unfollowBtn.dataset.username;
     
-    // Show confirmation modal instead of native confirm
-    showUnfollowConfirm(`Are you sure you want to unfollow @${username}?`).then(async (confirmed) => {
-        if (!confirmed) return;
-
-        unfollowBtn.disabled = true;
-        const originalText = unfollowBtn.textContent;
-        unfollowBtn.textContent = 'Unfollowing...';
-
-        try {
-            const response = await fetch('/friends/unfollow', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({ user_id: userId })
-            });
-
-            if (!response.ok) {
-                // Try to read response body for debug, but treat as failure
-                let text = null;
-                try { text = await response.text(); } catch (e) { /* ignore */ }
-                throw new Error(text || 'Server returned an error');
-            }
-
-            let data = null;
-            try {
-                data = await response.json();
-            } catch (err) {
-                // If parsing fails but response.ok, consider it success (server performed action)
-                data = { success: true };
-            }
-
-            if (data && data.success) {
-                // Remove card from DOM with animation
-                const card = unfollowBtn.closest('.bg-white');
-                if (card) {
-                    card.style.transition = 'opacity 220ms, transform 220ms';
-                    card.style.opacity = '0';
-                    card.style.transform = 'scale(0.95)';
-                    setTimeout(() => {
-                        card.remove();
-
-                        // If empty, reload to show empty state
-                        const activeTab = document.querySelector('.friends-tab.border-blue-500');
-                        if (activeTab) {
-                            const grid = document.querySelector(`#${activeTab.dataset.tab}-content .grid`);
-                            if (grid && grid.children.length === 0) {
-                                location.reload();
-                            }
-                        }
-                    }, 260);
-                }
-            } else {
-                showToast('Failed to unfollow: ' + (data && data.message ? data.message : 'Unknown error'));
-                unfollowBtn.disabled = false;
-                unfollowBtn.textContent = originalText;
-            }
-        } catch (error) {
-            console.error('Unfollow error:', error);
-            showToast('An error occurred while unfollowing');
-            unfollowBtn.disabled = false;
-            unfollowBtn.textContent = originalText;
-        }
-    });
+    showUnfollowModal(userId, username, unfollowBtn);
 });
-
-// Confirmation modal helper
-function showUnfollowConfirm(message) {
-    return new Promise((resolve) => {
-        let modal = document.getElementById('unfollow-confirm-modal');
-        if (!modal) {
-            // create modal
-            modal = document.createElement('div');
-            modal.id = 'unfollow-confirm-modal';
-            modal.innerHTML = `
-                <div class="fixed inset-0 z-60 flex items-center justify-center">
-                    <div class="absolute inset-0 bg-black opacity-50"></div>
-                    <div class="bg-white rounded-lg shadow-lg z-70 max-w-sm w-full p-4">
-                        <p id="unfollow-confirm-message" class="text-sm text-gray-800"></p>
-                        <div class="mt-4 flex justify-end gap-2">
-                            <button id="unfollow-cancel" class="px-4 py-2 rounded bg-gray-100">Cancel</button>
-                            <button id="unfollow-confirm" class="px-4 py-2 rounded bg-red-600 text-white">Unfollow</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        const msg = document.getElementById('unfollow-confirm-message');
-        msg.textContent = message;
-
-        const btnConfirm = document.getElementById('unfollow-confirm');
-        const btnCancel = document.getElementById('unfollow-cancel');
-
-        const cleanup = () => {
-            btnConfirm.removeEventListener('click', onConfirm);
-            btnCancel.removeEventListener('click', onCancel);
-            if (modal && modal.parentNode) {
-                modal.parentNode.removeChild(modal);
-            }
-        };
-
-        const onConfirm = () => { cleanup(); resolve(true); };
-        const onCancel = () => { cleanup(); resolve(false); };
-
-        btnConfirm.addEventListener('click', onConfirm);
-        btnCancel.addEventListener('click', onCancel);
-    });
-}
 
 // Simple toast helper
 function showToast(text) {
@@ -362,7 +363,8 @@ function showToast(text) {
     if (!t) {
         t = document.createElement('div');
         t.id = 'global-toast';
-        t.className = 'fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded shadow';
+        t.className = 'fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded shadow-lg z-50 transition-opacity duration-300';
+        t.style.opacity = '0';
         document.body.appendChild(t);
     }
     t.textContent = text;

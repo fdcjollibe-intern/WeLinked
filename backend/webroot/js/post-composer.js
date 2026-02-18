@@ -364,7 +364,7 @@ class PostComposer {
 
         const contentText = textarea.value.trim();
         if (!contentText) {
-            alert('Please write something to post');
+            this.showToast('Please write something to post', 'warning');
             return;
         }
 
@@ -409,13 +409,13 @@ class PostComposer {
                     window.location.reload();
                 }
                 
-                alert('Post created successfully!');
+                this.showToast('Post created successfully!', 'success');
             } else {
-                alert('Failed to create post: ' + (result.message || 'Unknown error'));
+                this.showToast('Failed to create post: ' + (result.message || 'Unknown error'), 'error');
             }
         } catch (error) {
             console.error('Post submit error:', error);
-            alert('An error occurred while creating post');
+            this.showToast('An error occurred while creating post', 'error');
         }
     }
 
@@ -447,7 +447,7 @@ class PostComposer {
             }
         } catch (err) {
             console.error('Upload error', err);
-            alert('Failed to upload attachments');
+            this.showToast('Failed to upload attachments', 'error');
         } finally {
             this.hideDropOverlay();
         }
@@ -506,99 +506,394 @@ class PostComposer {
     }
 
     /**
-     * Initialize post action buttons (edit, delete)
+     * Initialize post action buttons (edit, delete) and dropdown menus
      */
     initPostActions() {
         // Use event delegation for dynamically loaded posts
         document.addEventListener('click', (e) => {
-            const editBtn = e.target.closest('.post-edit-btn');
-            const deleteBtn = e.target.closest('.post-delete-btn');
-            
-            if (editBtn) {
-                const postId = editBtn.dataset.postId;
-                this.editPost(postId);
+            // Handle post menu button click (three dots)
+            const menuBtn = e.target.closest('.post-menu-btn');
+            if (menuBtn) {
+                e.stopPropagation();
+                const dropdown = menuBtn.nextElementSibling;
+                const isVisible = dropdown && !dropdown.classList.contains('hidden');
+                
+                // Close all other dropdowns first
+                document.querySelectorAll('.post-menu-dropdown').forEach(d => {
+                    d.classList.add('hidden');
+                });
+                
+                // Toggle this dropdown
+                if (dropdown && !isVisible) {
+                    dropdown.classList.remove('hidden');
+                }
+                return;
             }
             
+            // Handle edit button click
+            const editBtn = e.target.closest('.post-edit-btn');
+            if (editBtn) {
+                e.stopPropagation();
+                const postId = editBtn.dataset.postId;
+                this.closeAllPostMenus();
+                this.editPost(postId);
+                return;
+            }
+            
+            // Handle delete button click
+            const deleteBtn = e.target.closest('.post-delete-btn');
             if (deleteBtn) {
+                e.stopPropagation();
                 const postId = deleteBtn.dataset.postId;
+                this.closeAllPostMenus();
                 this.deletePost(postId);
+                return;
+            }
+            
+            // Close menus when clicking outside
+            if (!e.target.closest('.post-menu-container')) {
+                this.closeAllPostMenus();
             }
         });
     }
 
     /**
-     * Edit post
+     * Close all post menu dropdowns
+     */
+    closeAllPostMenus() {
+        document.querySelectorAll('.post-menu-dropdown').forEach(dropdown => {
+            dropdown.classList.add('hidden');
+        });
+    }
+
+    /**
+     * Edit post - shows a modal with post content and attachments
      */
     async editPost(postId) {
         const postElement = document.querySelector(`[data-post-id="${postId}"]`);
         if (!postElement) return;
 
-        const contentElement = postElement.querySelector('.post-content');
-        const currentContent = contentElement.textContent.trim();
+        // Find the post content
+        const contentElement = postElement.querySelector('p.text-gray-700');
+        const currentContent = contentElement ? contentElement.textContent.trim() : '';
         
-        const newContent = prompt('Edit your post:', currentContent);
-        if (newContent === null || newContent === currentContent) return;
-
-        try {
-            const response = await fetch(`/dashboard/posts/edit/${postId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    content_text: newContent
-                })
+        // Find existing attachments (images and videos)
+        const galleryEl = postElement.querySelector('.post-gallery');
+        const videoEl = postElement.querySelector('.post-video video');
+        const attachments = [];
+        
+        // Collect image attachments
+        if (galleryEl) {
+            const images = galleryEl.querySelectorAll('img');
+            images.forEach(img => {
+                if (img.src) {
+                    attachments.push({ type: 'image', url: img.src });
+                }
             });
-
-            const result = await response.json();
-            
-            if (result.success) {
-                // Update UI
-                contentElement.innerHTML = this.highlightMentions(newContent);
-                alert('Post updated successfully!');
-            } else {
-                alert('Failed to update post: ' + (result.message || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Post edit error:', error);
-            alert('An error occurred while updating post');
         }
+        
+        // Collect video attachments
+        if (videoEl && videoEl.src) {
+            attachments.push({ type: 'video', url: videoEl.src });
+        }
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'edit-post-modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-900">Edit Post</h3>
+                    <button class="edit-modal-close text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-4 max-h-[60vh] overflow-y-auto">
+                    <textarea class="edit-post-textarea w-full bg-gray-50 rounded-xl px-4 py-3 text-gray-700 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none" rows="4" placeholder="What's on your mind?">${this.escapeHtml(currentContent)}</textarea>
+                    
+                    <div class="edit-post-attachments mt-4 ${attachments.length === 0 ? 'hidden' : ''}">
+                        <div class="text-sm font-medium text-gray-700 mb-2">Attachments</div>
+                        <div class="edit-attachments-grid grid grid-cols-2 gap-2">
+                            ${attachments.map((att, idx) => `
+                                <div class="edit-attachment-item relative rounded-lg overflow-hidden bg-gray-100" data-index="${idx}" data-url="${this.escapeHtml(att.url)}" data-type="${att.type}">
+                                    ${att.type === 'image' 
+                                        ? `<img src="${this.escapeHtml(att.url)}" class="w-full h-32 object-cover">`
+                                        : `<video src="${this.escapeHtml(att.url)}" class="w-full h-32 object-cover"></video>`
+                                    }
+                                    <button class="remove-edit-attachment absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md" data-index="${idx}" title="Remove attachment">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                    <div class="attachment-removed-overlay hidden absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+                                        <span class="text-white text-xs font-medium">Will be removed</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">Click × to remove attachments. New attachments cannot be added while editing.</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50">
+                    <button class="edit-modal-cancel px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button class="edit-modal-save bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Focus textarea
+        const textarea = modal.querySelector('.edit-post-textarea');
+        if (textarea) {
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        }
+
+        // Track which attachments to remove
+        const attachmentsToRemove = new Set();
+
+        // Handle remove attachment clicks
+        modal.querySelectorAll('.remove-edit-attachment').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idx = parseInt(btn.dataset.index);
+                const item = modal.querySelector(`.edit-attachment-item[data-index="${idx}"]`);
+                const overlay = item?.querySelector('.attachment-removed-overlay');
+                
+                if (attachmentsToRemove.has(idx)) {
+                    // Un-mark for removal
+                    attachmentsToRemove.delete(idx);
+                    if (overlay) overlay.classList.add('hidden');
+                    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`;
+                } else {
+                    // Mark for removal
+                    attachmentsToRemove.add(idx);
+                    if (overlay) overlay.classList.remove('hidden');
+                    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`;
+                }
+            });
+        });
+
+        // Close modal on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+
+        // Close button
+        modal.querySelector('.edit-modal-close').addEventListener('click', () => modal.remove());
+        modal.querySelector('.edit-modal-cancel').addEventListener('click', () => modal.remove());
+
+        // Save button
+        modal.querySelector('.edit-modal-save').addEventListener('click', async () => {
+            const newContent = textarea.value.trim();
+            const saveBtn = modal.querySelector('.edit-modal-save');
+            
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> Saving...';
+
+            try {
+                // Build removed attachment URLs
+                const removedUrls = [];
+                attachmentsToRemove.forEach(idx => {
+                    if (attachments[idx]) {
+                        removedUrls.push(attachments[idx].url);
+                    }
+                });
+
+                const response = await fetch(`/dashboard/posts/edit/${postId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content_text: newContent,
+                        remove_attachments: removedUrls
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update UI - update text content
+                    if (contentElement) {
+                        contentElement.innerHTML = this.highlightMentions(newContent);
+                    }
+                    
+                    // Remove attachments from UI if any were marked
+                    if (attachmentsToRemove.size > 0) {
+                        // If all attachments removed, remove the gallery/video container
+                        if (attachmentsToRemove.size === attachments.length) {
+                            if (galleryEl) galleryEl.remove();
+                            if (videoEl) videoEl.closest('.post-video')?.remove();
+                        } else {
+                            // Partial removal - update the gallery
+                            // This is simplified - in real implementation you'd rebuild the gallery
+                            attachmentsToRemove.forEach(idx => {
+                                const att = attachments[idx];
+                                if (att.type === 'image' && galleryEl) {
+                                    const img = galleryEl.querySelector(`img[src="${att.url}"]`);
+                                    if (img) img.closest('div')?.remove();
+                                } else if (att.type === 'video' && videoEl) {
+                                    videoEl.closest('.post-video')?.remove();
+                                }
+                            });
+                        }
+                    }
+                    
+                    modal.remove();
+                } else {
+                    this.showToast('Failed to update post: ' + (result.message || 'Unknown error'), 'error');
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Save Changes';
+                }
+            } catch (error) {
+                console.error('Post edit error:', error);
+                this.showToast('An error occurred while updating post', 'error');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Save Changes';
+            }
+        });
+
+        // Handle escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
     }
 
     /**
-     * Delete post
+     * Escape HTML to prevent XSS
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    /**
+     * Delete post - shows confirmation modal
      */
     async deletePost(postId) {
-        if (!confirm('Are you sure you want to delete this post?')) {
-            return;
-        }
+        // Create confirm modal
+        const modal = document.createElement('div');
+        modal.className = 'delete-post-modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
+                <div class="p-6 text-center">
+                    <div class="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Delete Post</h3>
+                    <p class="text-sm text-gray-500 mb-6">Are you sure you want to delete this post? This action cannot be undone.</p>
+                    <div class="flex items-center justify-center gap-3">
+                        <button class="delete-modal-cancel px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                            Cancel
+                        </button>
+                        <button class="delete-modal-confirm bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
 
-        try {
-            const response = await fetch(`/dashboard/posts/delete/${postId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
+        document.body.appendChild(modal);
 
-            const result = await response.json();
-            
-            if (result.success) {
-                // Remove post from UI
-                const postElement = document.querySelector(`[data-post-id="${postId}"]`);
-                if (postElement) {
-                    postElement.style.opacity = '0';
-                    postElement.style.transform = 'scale(0.95)';
-                    setTimeout(() => postElement.remove(), 300);
-                }
-                alert('Post deleted successfully!');
-            } else {
-                alert('Failed to delete post: ' + (result.message || 'Unknown error'));
+        // Close modal on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
             }
-        } catch (error) {
-            console.error('Post delete error:', error);
-            alert('An error occurred while deleting post');
-        }
+        });
+
+        // Cancel button
+        modal.querySelector('.delete-modal-cancel').addEventListener('click', () => modal.remove());
+
+        // Confirm delete button
+        modal.querySelector('.delete-modal-confirm').addEventListener('click', async () => {
+            const confirmBtn = modal.querySelector('.delete-modal-confirm');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> Deleting...';
+
+            try {
+                const response = await fetch(`/dashboard/posts/delete/${postId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    modal.remove();
+                    // Remove post from UI with animation
+                    const postElement = document.querySelector(`[data-post-id="${postId}"]`);
+                    if (postElement) {
+                        postElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        postElement.style.opacity = '0';
+                        postElement.style.transform = 'scale(0.95)';
+                        setTimeout(() => postElement.remove(), 300);
+                    }
+                } else {
+                    modal.remove();
+                    this.showToast('Failed to delete post: ' + (result.message || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Post delete error:', error);
+                modal.remove();
+                this.showToast('An error occurred while deleting post', 'error');
+            }
+        });
+
+        // Handle escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    /**
+     * Show a toast notification
+     */
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        const bgColor = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-gray-800';
+        toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-fade-in`;
+        toast.innerHTML = `
+            ${type === 'error' ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : ''}
+            <span class="text-sm">${message}</span>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
 
     /**

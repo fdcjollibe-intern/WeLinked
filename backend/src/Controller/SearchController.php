@@ -169,8 +169,8 @@ class SearchController extends AppController
                 'Reactions',
                 'PostAttachments',
                 'Mentions' => [
-                    'Users' => function ($q) {
-                        return $q->select(['id', 'username', 'full_name']);
+                    'MentionedUsers' => function ($q) {
+                        return $q->select(['MentionedUsers.id', 'MentionedUsers.username', 'MentionedUsers.full_name']);
                     }
                 ]
             ])

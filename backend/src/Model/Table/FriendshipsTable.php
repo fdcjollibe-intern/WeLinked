@@ -218,10 +218,12 @@ class FriendshipsTable extends Table {
      */
     public function unfollow(int $followerId, int $followingId): bool
     {
-        return $this->deleteAll([
+        $deleted = $this->deleteAll([
             'follower_id' => $followerId,
             'following_id' => $followingId
         ]);
+        
+        return (bool)$deleted;
     }
 
     /**
