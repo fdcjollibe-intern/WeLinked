@@ -237,6 +237,22 @@
 
     let previewItems = [];
     let uploadedFilesData = []; // Store successfully uploaded files
+    let uploadingCount = 0; // Track number of files currently uploading
+    
+    // Function to update submit button state based on uploads
+    function updateSubmitButtonState() {
+      if (uploadingCount > 0) {
+        submit.disabled = true;
+        submit.classList.add('opacity-50', 'cursor-not-allowed');
+        submit.classList.remove('hover:bg-blue-600');
+        submit.title = 'Attachment uploading... Please wait';
+      } else {
+        submit.disabled = false;
+        submit.classList.remove('opacity-50', 'cursor-not-allowed');
+        submit.classList.add('hover:bg-blue-600');
+        submit.title = '';
+      }
+    }
     
     console.log('[middle.js] 📦 Preview container ready:', {
       previewId: preview.id,
@@ -372,15 +388,22 @@
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
         modal.innerHTML = `
-          <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6">
-            <h3 class="text-xl font-bold text-gray-900 mb-2">Discard post?</h3>
-            <p class="text-gray-600 mb-6">You have unsaved changes that will be lost if you continue.</p>
-            <div class="flex gap-3">
-              <button id="modal-cancel" class="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
-                Keep editing
+          <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div class="p-6">
+              <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-amber-100 rounded-full">
+                <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-900 text-center mb-2">Leave page?</h3>
+              <p class="text-gray-600 text-center text-sm">This page is asking you to confirm that you want to leave — information you've entered may not be saved.</p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+              <button id="modal-cancel" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors">
+                Stay on page
               </button>
-              <button id="modal-discard" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors">
-                Discard post
+              <button id="modal-discard" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors">
+                Leave page
               </button>
             </div>
           </div>
@@ -388,13 +411,34 @@
         
         document.body.appendChild(modal);
         
+        // Handle escape key
+        const handleEscape = (e) => {
+          if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', handleEscape);
+            resolve(false);
+          }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        // Handle click outside modal
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) {
+            modal.remove();
+            document.removeEventListener('keydown', handleEscape);
+            resolve(false);
+          }
+        });
+        
         modal.querySelector('#modal-cancel').addEventListener('click', function() {
           modal.remove();
+          document.removeEventListener('keydown', handleEscape);
           resolve(false);
         });
         
         modal.querySelector('#modal-discard').addEventListener('click', async function() {
           modal.remove();
+          document.removeEventListener('keydown', handleEscape);
           // Delete uploaded files from Cloudinary
           for (const file of uploadedFilesData) {
             if (file.public_id) {
@@ -428,6 +472,8 @@
           preview.innerHTML = '';
           previewItems = [];
           uploadedFilesData = [];
+          uploadingCount = 0;
+          updateSubmitButtonState();
           
           resolve(true);
         });
@@ -566,9 +612,15 @@
         
         // Start upload immediately
         console.log('[middle.js] 🚀 Starting immediate upload for:', file.name);
+        uploadingCount++;
+        updateSubmitButtonState();
+        
         uploadFile(file, 'post', function(pct) {
           card.setProgress(pct);
         }).then(function(result) {
+          uploadingCount--;
+          updateSubmitButtonState();
+          
           if (result && result.url) {
             console.log('[middle.js] ✅ File uploaded:', file.name, '->', result.url);
             card.markUploaded(result.url);
@@ -579,6 +631,9 @@
             card.markFailed();
           }
         }).catch(function(err) {
+          uploadingCount--;
+          updateSubmitButtonState();
+          
           console.error('[middle.js] ❌ Upload failed for:', file.name, err);
           card.markFailed();
           alert('Upload failed for ' + file.name + ': ' + err.message);
@@ -593,6 +648,12 @@
       console.log('[middle.js] ==========================================');
       console.log('[middle.js] 🖱️ SUBMIT BUTTON CLICKED');
       console.log('[middle.js] ==========================================');
+      
+      // Check if uploads are still in progress
+      if (uploadingCount > 0) {
+        console.warn('[middle.js] ⚠️ Cannot post while attachments are uploading');
+        return;
+      }
       
       const body = postInput.value || '';
       
@@ -812,6 +873,8 @@
           preview.innerHTML = '';
           previewItems = [];
           uploadedFilesData = [];
+          uploadingCount = 0;
+          updateSubmitButtonState();
         })
         .catch(function (err) {
           console.error('[middle.js] ❌ Post creation network error:', {
@@ -1012,6 +1075,16 @@
   } else {
     setupGlobalNavigationGuard();
   }
+
+  // Handle page refresh/close with unsaved changes
+  window.addEventListener('beforeunload', function(e) {
+    if (window.globalHasUnsavedChanges) {
+      // Standard way to trigger browser's native confirmation dialog
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  });
 
   // Initialize on DOMContentLoaded
   document.addEventListener('DOMContentLoaded', function () {

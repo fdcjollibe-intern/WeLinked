@@ -1,6 +1,19 @@
 // comments.js — inline comment composer with attachments, delete, and time formatting
 (function(){
+  console.log('[comments.js] 🚀 Module loading...');
   const csrfToken = window.csrfToken || document.querySelector('meta[name="csrfToken"]')?.content || '';
+  console.log('[comments.js] CSRF token available:', !!csrfToken);
+  
+  // Check if we're on a page with posts
+  setTimeout(() => {
+    const posts = document.querySelectorAll('.post');
+    const commentBtns = document.querySelectorAll('.comment-btn');
+    console.log('[comments.js] Found posts:', posts.length);
+    console.log('[comments.js] Found comment buttons:', commentBtns.length);
+    if (commentBtns.length > 0) {
+      console.log('[comments.js] First comment button:', commentBtns[0]);
+    }
+  }, 1000);
 
   function escapeHtml(value) {
     const div = document.createElement('div');
@@ -72,47 +85,104 @@
   }
 
   function handleCommentButtonClick(event) {
+    console.log('[comments.js] Click event captured:', event.target);
     const btn = event.target.closest('.comment-btn');
-    if (!btn) return;
+    console.log('[comments.js] Found comment button:', btn);
+    if (!btn) {
+      console.log('[comments.js] No comment button found, ignoring click');
+      return;
+    }
+    
+    // Check if already processed this event
+    if (event._commentProcessed) {
+      console.log('[comments.js] Event already processed, skipping');
+      return;
+    }
+    event._commentProcessed = true;
+    
     event.preventDefault();
+    event.stopImmediatePropagation(); // Stop other handlers from firing
+    console.log('[comments.js] Prevented default and stopped propagation, looking for post...');
     const post = btn.closest('.post');
-    if (!post) return;
+    console.log('[comments.js] Found post:', post);
+    if (!post) {
+      console.log('[comments.js] ERROR: No post found!');
+      return;
+    }
+    console.log('[comments.js] Toggling composer...');
     toggleComposer(post);
   }
 
   function toggleComposer(post) {
+    console.log('[comments.js] toggleComposer called for post:', post.dataset.postId);
     let composer = post.querySelector('.comment-composer');
+    console.log('[comments.js] Existing composer:', composer);
     if (!composer) {
+      console.log('[comments.js] Building new composer...');
       composer = buildComposer(post);
       post.appendChild(composer);
       loadExistingComments(post);
-    }
-    if (composer.classList.contains('hidden')) {
-      composer.classList.remove('hidden');
-      composer.querySelector('.comment-input')?.focus();
+      console.log('[comments.js] Composer created, appended, and VISIBLE');
+      // Focus the input after a short delay to ensure it's rendered
+      setTimeout(() => {
+        composer.querySelector('.comment-input')?.focus();
+      }, 100);
     } else {
-      composer.classList.add('hidden');
+      // Toggle visibility on subsequent clicks
+      console.log('[comments.js] Composer exists, toggling visibility');
+      console.log('[comments.js] Has hidden class?', composer.classList.contains('hidden'));
+      if (composer.classList.contains('hidden')) {
+        console.log('[comments.js] SHOWING composer');
+        composer.classList.remove('hidden');
+        composer.querySelector('.comment-input')?.focus();
+      } else {
+        console.log('[comments.js] HIDING composer');
+        composer.classList.add('hidden');
+      }
     }
+    console.log('[comments.js] Final state:', {
+      hasHiddenClass: composer.classList.contains('hidden'),
+      display: window.getComputedStyle(composer).display,
+      height: composer.offsetHeight,
+      isVisible: composer.offsetHeight > 0
+    });
   }
 
   function buildComposer(post) {
     const wrap = document.createElement('div');
-    wrap.className = 'comment-composer mt-4 border-t border-gray-100 pt-3 hidden';
+    wrap.className = 'comment-composer mt-4 border-t border-gray-100 pt-3';
+    console.log('[comments.js] Creating composer WITHOUT hidden class');
+    
+    // Get current user info
+    const userPhoto = window.currentUserPhoto || '';
+    const userInitial = window.currentUserInitial || 'U';
+    
     wrap.innerHTML = `
       <div class="comment-thread space-y-3 mb-3"></div>
       <div class="comment-input-wrapper">
         <div id="comment-attachment-preview-${post.dataset.postId}" class="mb-2 hidden"></div>
         <div class="flex items-center gap-2">
-          <label class="cursor-pointer inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors flex-shrink-0">
-            <input type="file" class="comment-attachment-input hidden" accept="image/*,video/*">
-            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-          </label>
-          <textarea class="comment-input flex-1 bg-gray-50 rounded-xl px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400" rows="1" placeholder="Write a comment..."></textarea>
-          <button class="comment-submit bg-blue-500 text-white w-10 h-10 rounded-lg text-sm font-semibold flex items-center justify-center hover:bg-blue-600 transition-colors flex-shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <!-- Profile Photo -->
+          <div class="flex-shrink-0">
+            ${userPhoto 
+              ? `<img src="${userPhoto}" alt="Profile" class="w-10 h-10 rounded-full object-cover">`
+              : `<div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-semibold">${userInitial}</div>`
+            }
+          </div>
+          <!-- Input Field -->
+          <div class="flex-1 flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2 border border-gray-200 focus-within:ring-1 focus-within:ring-blue-400">
+            <textarea class="comment-input flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 text-sm resize-none" rows="1" placeholder="Write a comment here" style="min-height: 24px; max-height: 120px;"></textarea>
+            <!-- Paperclip Icon (Attachment) -->
+            <label class="cursor-pointer inline-flex items-center justify-center hover:opacity-70 transition-opacity flex-shrink-0">
+              <input type="file" class="comment-attachment-input hidden" accept="image/*,video/*">
+              <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+              </svg>
+            </label>
+          </div>
+          <!-- Send Button (Paper Plane) -->
+          <button class="comment-submit bg-blue-500 text-white w-10 h-10 rounded-full text-sm font-semibold flex items-center justify-center hover:bg-blue-600 transition-colors flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="transform: rotate(-35deg);">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
             </svg>
           </button>
@@ -206,19 +276,37 @@
         'X-Requested-With': 'XMLHttpRequest'
       }
     })
-    .then(r => r.json())
+    .then(r => {
+      console.log('[comments.js] Response status:', r.status);
+      return r.json();
+    })
     .then(json => {
+      console.log('[comments.js] ========== FETCHED COMMENTS ==========');
+      console.log('[comments.js] Full response:', json);
+      console.log('[comments.js] Comments array:', json.comments);
       if (!json || !json.success) {
         thread.innerHTML = '';
         return;
       }
       thread.innerHTML = '';
       const comments = json.comments || [];
+      console.log('[comments.js] Processing', comments.length, 'comments');
       if (comments.length === 0) {
         thread.innerHTML = '<div class="text-center py-2 text-gray-400 text-sm">No comments yet. Be the first!</div>';
         return;
       }
-      comments.forEach(comment => renderComment(thread, comment, post));
+      comments.forEach((comment, index) => {
+        console.log(`[comments.js] ========== COMMENT ${index + 1}/${comments.length} ==========`);
+        console.log('[comments.js] Comment ID:', comment.id);
+        console.log('[comments.js] Comment text:', comment.content_text);
+        console.log('[comments.js] User reaction:', comment.user_reaction);
+        console.log('[comments.js] Reaction counts:', comment.reaction_counts);
+        console.log('[comments.js] Reaction counts type:', typeof comment.reaction_counts);
+        console.log('[comments.js] Is array?:', Array.isArray(comment.reaction_counts));
+        console.log('[comments.js] Keys:', comment.reaction_counts ? Object.keys(comment.reaction_counts) : 'null');
+        console.log('[comments.js] Full comment object:', comment);
+        renderComment(thread, comment, post);
+      });
     })
     .catch(err => {
       console.error('[comments.js] Failed to load comments', err);
@@ -227,6 +315,12 @@
   }
 
   function renderComment(thread, comment, post) {
+    console.log('[comments.js] renderComment called with comment:', comment);
+    console.log('[comments.js] Comment reaction data:', {
+      user_reaction: comment.user_reaction,
+      reaction_counts: comment.reaction_counts
+    });
+    
     const user = comment?.user || {};
     const currentUserId = window.currentUserId || null;
     const canDelete = currentUserId && (currentUserId === comment.user_id || currentUserId === parseInt(post.dataset.userId));
@@ -268,10 +362,10 @@
         </div>
         <div class="flex items-center gap-4 mt-2 px-2">
           <button class="comment-reaction-btn flex items-center gap-1.5 text-gray-500 hover:bg-gray-100 rounded-lg px-2 py-1 transition-colors text-sm" data-comment-id="${comment.id}" data-user-reaction="" data-target-type="comment" data-target-id="${comment.id}">
-            <svg class="like-icon w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <svg class="like-icon w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
             </svg>
-            <span class="reaction-label text-xs font-medium">Like</span>
+            <span class="reaction-label text-xs font-medium text-gray-700">Like</span>
             <span class="reaction-count text-xs" data-count="0" style="display:none">0</span>
           </button>
           ${canEdit ? `<button class="edit-comment-btn text-gray-500 hover:text-blue-600 transition-colors p-1" data-comment-id="${comment.id}" title="Edit comment">
@@ -290,13 +384,37 @@
     thread.appendChild(item);
     
     // Initialize reaction button state if comment has reactions
-    if (comment.user_reaction || comment.reaction_counts) {
-      const reactionBtn = item.querySelector('.comment-reaction-btn');
-      if (reactionBtn && comment.user_reaction) {
+    const reactionBtn = item.querySelector('.comment-reaction-btn');
+    console.log('[comments.js] Found reaction button:', !!reactionBtn);
+    
+    if (reactionBtn) {
+      // Normalize reaction_counts: convert array to object if needed
+      let reactionCounts = comment.reaction_counts;
+      if (Array.isArray(reactionCounts)) {
+        console.warn('[comments.js] reaction_counts is an array, converting to object:', reactionCounts);
+        reactionCounts = {};
+      }
+      
+      console.log('[comments.js] Comment reaction data:', {
+        user_reaction: comment.user_reaction,
+        reaction_counts: reactionCounts,
+        reaction_counts_type: typeof reactionCounts,
+        reaction_counts_keys: reactionCounts ? Object.keys(reactionCounts) : null
+      });
+      
+      // Update button appearance if current user has reacted
+      if (comment.user_reaction) {
+        console.log('[comments.js] Updating button with user reaction:', comment.user_reaction);
         updateCommentReactionButton(reactionBtn, comment.user_reaction);
       }
-      if (comment.reaction_counts) {
-        updateCommentReactionCount(reactionBtn, comment.reaction_counts);
+      
+      // Always update reaction count if it exists (even if current user hasn't reacted)
+      // Check for both null/undefined AND if object has any keys
+      if (reactionCounts && typeof reactionCounts === 'object' && Object.keys(reactionCounts).length > 0) {
+        console.log('[comments.js] Updating reaction count:', reactionCounts);
+        updateCommentReactionCount(reactionBtn, reactionCounts);
+      } else {
+        console.log('[comments.js] No reaction counts to display (empty or null)');
       }
     }
   }
@@ -304,6 +422,15 @@
   function handleCommentSubmit(event) {
     const submitBtn = event.target.closest('.comment-submit');
     if (!submitBtn) return;
+    
+    // Check if already processed this event
+    if (event._submitProcessed) {
+      console.log('[comments.js] Submit event already processed, skipping');
+      return;
+    }
+    event._submitProcessed = true;
+    event.stopImmediatePropagation();
+    
     event.preventDefault();
     
     const composer = submitBtn.closest('.comment-composer');
@@ -415,6 +542,15 @@
   function handleDeleteComment(event) {
     const deleteBtn = event.target.closest('.delete-comment-btn');
     if (!deleteBtn) return;
+    
+    // Check if already processed this event
+    if (event._deleteProcessed) {
+      console.log('[comments.js] Delete event already processed, skipping');
+      return;
+    }
+    event._deleteProcessed = true;
+    event.stopImmediatePropagation();
+    
     event.preventDefault();
 
     const commentId = deleteBtn.dataset.commentId;
@@ -576,21 +712,31 @@
   }
 
   function updateCommentReactionCount(btn, counts) {
-    if (!btn) return;
+    if (!btn) {
+      console.log('[comments.js] updateCommentReactionCount: btn is null');
+      return;
+    }
     
     const countEl = btn.querySelector('.reaction-count');
-    if (!countEl) return;
+    if (!countEl) {
+      console.log('[comments.js] updateCommentReactionCount: .reaction-count element not found');
+      return;
+    }
     
-    const total = Object.values(counts).reduce((sum, val) => sum + val, 0);
+    console.log('[comments.js] updateCommentReactionCount called with counts:', counts);
+    const total = Object.values(counts || {}).reduce((sum, val) => sum + val, 0);
+    console.log('[comments.js] Total reactions:', total);
     
     if (total > 0) {
       countEl.textContent = total;
       countEl.dataset.count = total;
-      countEl.style.display = '';
+      countEl.style.display = 'inline-block'; // Explicitly set to inline-block
+      console.log('[comments.js] Showing reaction count:', total, 'display:', countEl.style.display);
     } else {
       countEl.textContent = '0';
       countEl.dataset.count = '0';
       countEl.style.display = 'none';
+      console.log('[comments.js] Hiding reaction count (total is 0)');
     }
   }
 
@@ -615,6 +761,15 @@
   function handleEditComment(event) {
     const editBtn = event.target.closest('.edit-comment-btn');
     if (!editBtn) return;
+    
+    // Check if already processed this event
+    if (event._editProcessed) {
+      console.log('[comments.js] Edit event already processed, skipping');
+      return;
+    }
+    event._editProcessed = true;
+    event.stopImmediatePropagation();
+    
     event.preventDefault();
 
     const commentItem = editBtn.closest('.comment-item');
@@ -753,9 +908,24 @@
     });
   }
 
-  // Event delegation
+  // Event delegation with logging
+  console.log('[comments.js] Setting up event listeners...');
+  
+  // Expose function for use by other modules (e.g., modals)
+  window.updateCommentReactionButton = updateCommentReactionButton;
+  
+  // Test listener to see if any clicks are captured
+  document.addEventListener('click', function(e) {
+    const isCommentBtn = e.target.closest('.comment-btn');
+    if (isCommentBtn) {
+      console.log('[comments.js] GLOBAL CLICK on comment button detected!');
+    }
+  }, true); // Use capture phase
+  
   document.addEventListener('click', handleCommentButtonClick);
   document.addEventListener('click', handleCommentSubmit);
   document.addEventListener('click', handleDeleteComment);
   document.addEventListener('click', handleEditComment);
+  
+  console.log('[comments.js] Module fully initialized');
 })();

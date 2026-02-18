@@ -55,7 +55,9 @@ class NotificationsManager {
         document.addEventListener('click', (e) => {
             const notifItem = e.target.closest('.notification-item');
             if (notifItem) {
+                console.log('Notification clicked:', notifItem);
                 const notifId = parseInt(notifItem.dataset.notificationId);
+                console.log('Notification ID:', notifId, 'Target type:', notifItem.dataset.targetType, 'Target ID:', notifItem.dataset.targetId);
                 this.handleNotificationClick(notifId, notifItem);
             }
         });
@@ -201,10 +203,10 @@ class NotificationsManager {
         const notificationsHTML = notifications.map(notif => `
             <div class="notification-item flex items-start px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 ${!notif.is_read ? 'bg-blue-50' : ''}"
                  data-notification-id="${notif.id}"
-                 data-target-type="${notif.target_type}"
-                 data-target-id="${notif.target_id}">
-                ${notif.actor && notif.actor.profile_photo_path ? 
-                    `<img src="${notif.actor.profile_photo_path}" alt="${notif.actor.username}" class="w-10 h-10 rounded-full mr-3">` :
+                 data-target-type="${notif.target ? notif.target.type : ''}"
+                 data-target-id="${notif.target ? notif.target.id : ''}">
+                ${notif.actor && notif.actor.profile_photo ? 
+                    `<img src="${notif.actor.profile_photo}" alt="${notif.actor.username}" class="w-10 h-10 rounded-full mr-3">` :
                     `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3 text-sm font-semibold text-gray-600">
                         ${notif.actor ? notif.actor.username.charAt(0).toUpperCase() : '?'}
                     </div>`
@@ -214,7 +216,7 @@ class NotificationsManager {
                         <span class="font-semibold">${notif.actor ? notif.actor.username : 'Someone'}</span>
                         ${notif.message || 'mentioned you in a post'}
                     </p>
-                    <p class="text-xs text-gray-500 mt-1">${this.formatTimestamp(notif.created)}</p>
+                    <p class="text-xs text-gray-500 mt-1">${this.formatTimestamp(notif.created_at)}</p>
                 </div>
                 ${!notif.is_read ? 
                     `<div class="w-2 h-2 bg-blue-500 rounded-full ml-2"></div>` : 
@@ -241,16 +243,22 @@ class NotificationsManager {
      * Handle notification click
      */
     async handleNotificationClick(notificationId, notifElement) {
+        console.log('handleNotificationClick called:', { notificationId, notifElement });
         const targetType = notifElement.dataset.targetType;
         const targetId = notifElement.dataset.targetId;
+        
+        console.log('Target:', { targetType, targetId });
         
         // Mark as read
         await this.markAsRead(notificationId);
         
         // Navigate to target
         if (targetType === 'post' && targetId) {
-            // Navigate to post (could scroll to post or navigate to profile with post highlighted)
-            window.location.href = `/dashboard#post-${targetId}`;
+            console.log('Navigating to post:', targetId);
+            // Navigate to single post view
+            window.location.href = `/post/${targetId}`;
+        } else {
+            console.log('Target type not handled or missing:', targetType, targetId);
         }
         
         this.hideDropdown();

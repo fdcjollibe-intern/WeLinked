@@ -280,9 +280,7 @@ class DashboardUploadsController extends AppController
         }
     }
 
-    /**
-     * Delete uploaded resource (Cloudinary public_id). Expects JSON body with public_id and resource_type (image|video).
-     */
+   
     public function delete()
     {
         $this->autoRender = false; // Prevent view rendering for JSON response

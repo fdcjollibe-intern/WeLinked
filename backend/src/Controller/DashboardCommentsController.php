@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Service\CloudinaryUploader;
+use Cake\Core\Configure;
+
 class DashboardCommentsController extends AppController
 {
     public function initialize(): void
@@ -42,6 +45,33 @@ class DashboardCommentsController extends AppController
             }
 
             if ($commentsTable->save($comment)) {
+                // Create notification for post owner (if not commenting on own post)
+                $postsTable = $this->fetchTable('Posts');
+                $post = $postsTable->find()
+                    ->select(['user_id'])
+                    ->where(['id' => $postId])
+                    ->first();
+                    
+                if ($post && $post->user_id !== $identity->id) {
+                    $usersTable = $this->fetchTable('Users');
+                    $actor = $usersTable->find()
+                        ->select(['username'])
+                        ->where(['id' => $identity->id])
+                        ->first();
+                    
+                    $notificationsTable = $this->fetchTable('Notifications');
+                    $notification = $notificationsTable->newEntity([
+                        'user_id' => $post->user_id,
+                        'actor_id' => $identity->id,
+                        'type' => 'comment',
+                        'target_type' => 'post',
+                        'target_id' => $postId,
+                        'message' => ($actor ? $actor->username : 'Someone') . ' commented on your post',
+                        'is_read' => false,
+                    ]);
+                    $notificationsTable->save($notification);
+                }
+                
                 $usersTable = $this->fetchTable('Users');
                 $user = $usersTable->find()
                     ->select(['id', 'username', 'full_name', 'profile_photo_path'])
@@ -60,7 +90,7 @@ class DashboardCommentsController extends AppController
                         'created_at' => $comment->created_at ? $comment->created_at->format('Y-m-d H:i:s') : null,
                         'user' => $userPayload,
                         'user_reaction' => null,
-                        'reaction_counts' => [],
+                        'reaction_counts' => new \stdClass(),
                     ],
                 ]);
             }
@@ -102,10 +132,20 @@ class DashboardCommentsController extends AppController
                 ->orderByAsc('created_at')
                 ->all();
 
+            $this->log("Found " . count($comments) . " comments for post {$postId}", 'info');
+
             $usersTable = $this->fetchTable('Users');
-            $reactionsTable = $this->getTableLocator()->exists('Reactions') 
-                ? $this->fetchTable('Reactions') 
-                : null;
+            
+            // Always try to fetch Reactions table
+            try {
+                $reactionsTable = $this->fetchTable('Reactions');
+                $this->log("Reactions table loaded successfully", 'info');
+            } catch (\Exception $e) {
+                $this->log("Failed to load Reactions table: " . $e->getMessage(), 'error');
+                $reactionsTable = null;
+            }
+            
+            $this->log("Reactions table available: " . ($reactionsTable ? 'yes' : 'no'), 'info');
             
             $commentList = [];
             foreach ($comments as $comment) {
@@ -128,17 +168,38 @@ class DashboardCommentsController extends AppController
                         ])
                         ->first();
                     $userReaction = $myReaction ? $myReaction->reaction_type : null;
+                    $this->log("Comment {$comment->id} - Current user (ID: {$identity->id}) reaction: " . ($userReaction ?: 'none'), 'info');
                     
-                    // Get reaction counts
-                    $countsQuery = $reactionsTable->find()
-                        ->select(['reaction_type', 'count' => $reactionsTable->find()->func()->count('*')])
-                        ->where(['target_type' => 'comment', 'target_id' => $comment->id])
-                        ->groupBy('reaction_type');
+                    // Get reaction counts - simplified query
+                    $this->log("Fetching reaction counts for comment {$comment->id}...", 'info');
                     
-                    foreach ($countsQuery as $row) {
-                        $reactionCounts[$row->reaction_type] = (int)$row->count;
+                    $allReactions = $reactionsTable->find()
+                        ->where([
+                            'target_type' => 'comment',
+                            'target_id' => $comment->id
+                        ])
+                        ->all();
+                    
+                    $this->log("Found " . count($allReactions) . " total reactions for comment {$comment->id}", 'info');
+                    
+                    // Count manually
+                    foreach ($allReactions as $reaction) {
+                        $type = $reaction->reaction_type;
+                        if (!isset($reactionCounts[$type])) {
+                            $reactionCounts[$type] = 0;
+                        }
+                        $reactionCounts[$type]++;
+                        $this->log("  - Reaction: {$type} (user: {$reaction->user_id})", 'info');
+                    }
+                    
+                    if (empty($reactionCounts)) {
+                        $this->log("Comment {$comment->id} has no reactions (after counting)", 'info');
+                    } else {
+                        $this->log("Comment {$comment->id} final counts: " . json_encode($reactionCounts), 'info');
                     }
                 }
+                
+                $this->log("Comment {$comment->id} reactions - user: {$userReaction}, counts: " . json_encode($reactionCounts), 'info');
                 
                 $commentList[] = [
                     'id' => $comment->id,
@@ -149,10 +210,13 @@ class DashboardCommentsController extends AppController
                     'created_at' => $comment->created_at ? $comment->created_at->format('Y-m-d H:i:s') : null,
                     'user' => $user ? $user->toArray() : null,
                     'user_reaction' => $userReaction,
-                    'reaction_counts' => $reactionCounts,
+                    'reaction_counts' => empty($reactionCounts) ? new \stdClass() : $reactionCounts,
                 ];
             }
 
+            $this->log("Returning " . count($commentList) . " comments with reactions", 'info');
+            $this->log("Full comment list JSON: " . json_encode($commentList), 'info');
+            
             return $this->jsonResponse([
                 'success' => true,
                 'comments' => $commentList,
@@ -284,23 +348,41 @@ class DashboardCommentsController extends AppController
                 ], 403);
             }
 
+            // Delete Cloudinary attachment if exists
+            if (!empty($comment->attachment_url)) {
+                $this->deleteCloudinaryAttachment($comment->attachment_url);
+            }
+            
             // Soft delete the comment
             $comment->deleted_at = new \DateTime();
             
             if ($commentsTable->save($comment)) {
                 // Hard delete comment reactions
                 $reactionsTable = $this->fetchTable('Reactions');
-                $reactionsTable->deleteAll([
+                $deletedReactions = $reactionsTable->deleteAll([
                     'target_type' => 'comment',
                     'target_id' => $commentId
                 ]);
+                $this->log("Deleted {$deletedReactions} reactions for comment {$commentId}", 'info');
                 
                 // Delete notifications related to this comment
                 $notificationsTable = $this->fetchTable('Notifications');
-                $notificationsTable->deleteAll([
+                
+                // Delete notifications about reactions TO this comment (target_type='comment')
+                $deletedReactionNotifs = $notificationsTable->deleteAll([
                     'target_type' => 'comment',
                     'target_id' => $commentId
                 ]);
+                $this->log("Deleted {$deletedReactionNotifs} reaction notifications for comment {$commentId}", 'info');
+                
+                // Delete notification about THIS comment being created (target_type='post', type='comment', actor_id=comment author)
+                $deletedCommentNotif = $notificationsTable->deleteAll([
+                    'type' => 'comment',
+                    'target_type' => 'post',
+                    'target_id' => $comment->post_id,
+                    'actor_id' => $comment->user_id
+                ]);
+                $this->log("Deleted {$deletedCommentNotif} comment notification for post {$comment->post_id}", 'info');
                 
                 return $this->jsonResponse([
                     'success' => true,
@@ -318,6 +400,60 @@ class DashboardCommentsController extends AppController
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
+        }
+    }
+
+    /**
+     * Delete attachment from Cloudinary if it exists
+     * 
+     * @param string $url Cloudinary URL
+     * @return void
+     */
+    private function deleteCloudinaryAttachment(string $url): void
+    {
+        try {
+            // Check if it's a Cloudinary URL
+            if (strpos($url, 'cloudinary.com') === false) {
+                return;
+            }
+
+            // Load Cloudinary config to check if it's enabled
+            Configure::load('cloudinary', 'default');
+            $cloudinaryConfig = (array)Configure::read('Cloudinary');
+            
+            if (empty($cloudinaryConfig['api_key']) || empty($cloudinaryConfig['cloud_name'])) {
+                return;
+            }
+
+            // Extract public_id from Cloudinary URL
+            // URL format: https://res.cloudinary.com/<cloud_name>/<resource_type>/upload/<version>/<folder>/<public_id>.<extension>
+            // We need to extract everything after 'upload/' and before the file extension
+            preg_match('/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/', $url, $matches);
+            
+            if (empty($matches[1])) {
+                $this->log('Could not extract public_id from URL: ' . $url, 'warning');
+                return;
+            }
+
+            $publicId = $matches[1];
+            
+            // Determine resource type (image or video)
+            $resourceType = 'image';
+            if (preg_match('/\.(mp4|mov|avi|webm|mkv)$/i', $url)) {
+                $resourceType = 'video';
+            }
+
+            // Delete from Cloudinary
+            $uploader = new CloudinaryUploader();
+            $deleted = $uploader->delete($publicId, $resourceType);
+            
+            if ($deleted) {
+                $this->log('Successfully deleted Cloudinary attachment: ' . $publicId, 'info');
+            } else {
+                $this->log('Failed to delete Cloudinary attachment: ' . $publicId, 'warning');
+            }
+        } catch (\Exception $e) {
+            $this->log('Error deleting Cloudinary attachment: ' . $e->getMessage(), 'error');
         }
     }
 

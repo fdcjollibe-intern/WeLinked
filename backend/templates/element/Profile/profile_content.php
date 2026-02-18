@@ -83,6 +83,20 @@ $reactionEmojis = [
                         <button data-action="edit-profile" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors">
                             Edit Profile
                         </button>
+                    <?php elseif ($identity->id !== $user->id): ?>
+                        <?php if (isset($isFollowing) && $isFollowing): ?>
+                            <button class="profile-header-unfollow-btn px-4 py-2 bg-gray-100 hover:bg-red-50 border border-gray-200 hover:border-red-300 text-gray-600 hover:text-red-600 rounded-lg text-sm font-medium transition-colors"
+                                    data-user-id="<?= $user->id ?>"
+                                    data-username="<?= h($user->username) ?>">
+                                Following
+                            </button>
+                        <?php else: ?>
+                            <button class="profile-header-follow-btn px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
+                                    data-user-id="<?= $user->id ?>"
+                                    data-username="<?= h($user->username) ?>">
+                                Follow
+                            </button>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
                 <!-- username -->
@@ -190,7 +204,7 @@ $reactionEmojis = [
                         $commentTotal = (int)($post->comments_count ?? 0);
                         $userReaction = $post->user_reaction ?? '';
                     ?>
-                    <article class="post bg-white rounded-2xl shadow-sm border border-gray-100 p-5" data-index="<?= $index + 1 ?>" data-post-id="<?= h($post->id ?? ($index + 1)) ?>">
+                    <article id="post-<?= h($post->id ?? ($index + 1)) ?>" class="post bg-white rounded-2xl shadow-sm border border-gray-100 p-5" data-index="<?= $index + 1 ?>" data-post-id="<?= h($post->id ?? ($index + 1)) ?>">
                         <div class="flex items-start justify-between mb-4">
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 rounded-full overflow-hidden">
@@ -283,41 +297,39 @@ $reactionEmojis = [
                                     $imageUrls[] = $img;
                                 }
                             }
+                            $imageUrlsJson = json_encode($imageUrls);
                             ?>
-                            <div class="post-gallery mt-3 mb-4 overflow-hidden rounded-xl bg-gray-50">
                                 <?php if (count($imageUrls) === 1): ?>
-                                    <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-auto object-cover">
+                                    <div class="photo-collage single-photo cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>' data-index="0">
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-auto rounded-xl object-cover max-h-[500px]">
+                                    </div>
                                 <?php elseif (count($imageUrls) === 2): ?>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <?php foreach ($imageUrls as $img): ?>
-                                            <img src="<?= h($img) ?>" alt="Post image" class="w-full h-full object-cover">
-                                        <?php endforeach; ?>
+                                    <div class="photo-collage two-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>'>
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-64 object-cover" data-index="0">
+                                        <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-64 object-cover" data-index="1">
                                     </div>
                                 <?php elseif (count($imageUrls) === 3): ?>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
+                                    <div class="photo-collage three-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>'>
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2" data-index="0">
                                         <div class="grid grid-rows-2 gap-2">
-                                            <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover">
-                                            <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                            <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="1">
+                                            <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="2">
                                         </div>
                                     </div>
                                 <?php else: ?>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
+                                    <div class="photo-collage multi-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>'>
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2" data-index="0">
                                         <div class="grid grid-rows-2 gap-2">
-                                            <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover">
+                                            <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="1">
                                             <div class="relative">
-                                                <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover">
-                                                <?php if (count($imageUrls) > 3): ?>
-                                                    <div class="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-                                                        <span class="text-white text-2xl font-bold">+<?= count($imageUrls) - 3 ?></span>
-                                                    </div>
-                                                <?php endif; ?>
+                                                <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="2">
+                                                <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center pointer-events-none">
+                                                    <span class="text-white text-3xl font-bold">+<?= count($imageUrls) - 3 ?></span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 <?php endif; ?>
-                            </div>
                         <?php endif; ?>
 
                         <div class="flex items-center justify-between text-sm text-gray-500 mb-2 px-1">
@@ -341,16 +353,26 @@ $reactionEmojis = [
                                 <span class="comments-count" data-count="<?= $commentTotal ?>">
                                     <?= h(__n('{0} comment', '{0} comments', $commentTotal, $commentTotal)) ?>
                                 </span>
-                                <span class="shares-count">0 shares</span>
                             </div>
                         </div>
 
                         <div class="border-t border-gray-100 pt-2 flex items-center justify-around">
                             <button class="reaction-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors" data-user-reaction="<?= h($userReaction) ?>">
-                                <svg class="like-icon w-5 h-5 <?= $userReaction ? 'text-red-500 fill-current' : 'text-gray-500' ?>" fill="<?= $userReaction ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                                </svg>
-                                <span class="reaction-label text-sm font-medium <?= $userReaction ? 'text-red-500' : 'text-gray-700' ?>">
+                                <?php if ($userReaction === 'like'): ?>
+                                    <svg class="like-icon w-5 h-5 text-red-500" fill="currentColor" stroke="none" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                    </svg>
+                                <?php elseif ($userReaction && isset($reactionEmojis[$userReaction])): ?>
+                                    <svg class="like-icon w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:none">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                    </svg>
+                                    <span class="reaction-emoji-active text-xl leading-none mr-1"><?= h($reactionEmojis[$userReaction]) ?></span>
+                                <?php else: ?>
+                                    <svg class="like-icon w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                    </svg>
+                                <?php endif; ?>
+                                <span class="reaction-label text-sm font-medium <?= $userReaction === 'like' ? 'text-red-500' : 'text-gray-700' ?>">
                                     <?= $userReaction ? ucfirst($userReaction) : 'Like' ?>
                                 </span>
                             </button>
@@ -359,12 +381,6 @@ $reactionEmojis = [
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                                 </svg>
                                 <span class="text-sm font-medium text-gray-700">Comment</span>
-                            </button>
-                            <button class="share-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-                                </svg>
-                                <span class="text-sm font-medium text-gray-700">Share</span>
                             </button>
                         </div>
                     </article>
@@ -444,6 +460,7 @@ $reactionEmojis = [
     const searchInput = document.getElementById('modal-search');
     const profileRoot = document.querySelector('[data-profile-user-id]');
     const profileUserId = profileRoot ? Number(profileRoot.getAttribute('data-profile-user-id')) : null;
+    const currentUserId = <?= (int)($identity->id ?? $identity['id'] ?? 0) ?>;
     const PROFILE_CSRF_TOKEN = window.CSRF_TOKEN || window.csrfToken || document.querySelector('meta[name="csrfToken"]')?.content || document.querySelector('meta[name="csrf-token"]')?.content || '';
     let username = <?= json_encode($user->username) ?>;
     let currentTab = 'followers';
@@ -532,6 +549,51 @@ $reactionEmojis = [
         loadData(currentTab);
     });
     
+    // Handle follow button in profile header
+    document.addEventListener('click', function(e) {
+        const followBtn = e.target.closest('.profile-header-follow-btn');
+        if (!followBtn) return;
+        
+        const userId = followBtn.dataset.userId;
+        const username = followBtn.dataset.username;
+        
+        followBtn.disabled = true;
+        followBtn.textContent = 'Following...';
+        
+        fetch('/friends/follow', buildProfileJsonRequest({ user_id: userId }))
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Change button to "Following" state
+                    followBtn.textContent = 'Following';
+                    followBtn.className = 'profile-header-unfollow-btn px-4 py-2 bg-gray-100 hover:bg-red-50 border border-gray-200 hover:border-red-300 text-gray-600 hover:text-red-600 rounded-lg text-sm font-medium transition-colors';
+                    followBtn.disabled = false;
+                    showToast(`You are now following @${username}`);
+                } else {
+                    showToast(data.message || 'Failed to follow user');
+                    followBtn.disabled = false;
+                    followBtn.textContent = 'Follow';
+                }
+            })
+            .catch(error => {
+                console.error('Follow error:', error);
+                showToast('An error occurred');
+                followBtn.disabled = false;
+                followBtn.textContent = 'Follow';
+            });
+    });
+    
+    // Handle unfollow button in profile header
+    document.addEventListener('click', function(e) {
+        const unfollowBtn = e.target.closest('.profile-header-unfollow-btn');
+        if (!unfollowBtn) return;
+        
+        const userId = unfollowBtn.dataset.userId;
+        const username = unfollowBtn.dataset.username;
+        
+        showUnfollowModal(userId, username, unfollowBtn);
+    });
+    
     // Search functionality
     searchInput.addEventListener('input', function() {
         const query = this.value.toLowerCase();
@@ -583,26 +645,34 @@ $reactionEmojis = [
             return;
         }
         
-        modalContent.innerHTML = data.map(user => `
-            <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg" data-modal-user-id="${escapeHtml(String(user.id))}">
-                <div class="flex items-center space-x-3 flex-1 min-w-0">
-                    ${user.profile_photo_path 
-                        ? `<img src="${escapeHtml(user.profile_photo_path)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" data-avatar>`
-                        : `<div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0" data-avatar>${escapeHtml(modalInitial(user.username))}</div>`
-                    }
-                    <div class="min-w-0 flex-1">
-                        <a href="/profile/${escapeHtml(user.username)}" class="profile-link text-sm font-semibold text-gray-900 hover:underline block truncate" data-profile-link>
-                            <span data-full-name>${escapeHtml(user.full_name)}</span>
-                        </a>
-                        <p class="text-xs text-gray-500 truncate" data-username-display>@${escapeHtml(user.username)}</p>
-                    </div>
-                </div>
-                ${user.is_following 
+        modalContent.innerHTML = data.map(user => {
+            const isOwnAccount = currentUserId && Number(user.id) === currentUserId;
+            let actionButton = '';
+            
+            if (!isOwnAccount) {
+                actionButton = user.is_following 
                     ? `<button class="unfollow-user-btn px-4 py-1.5 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors" data-user-id="${user.id}">Unfollow</button>`
-                    : `<button class="follow-user-btn px-4 py-1.5 text-xs font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" data-user-id="${user.id}">Follow</button>`
-                }
-            </div>
-        `).join('');
+                    : `<button class="follow-user-btn px-4 py-1.5 text-xs font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" data-user-id="${user.id}">Follow</button>`;
+            }
+            
+            return `
+                <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg" data-modal-user-id="${escapeHtml(String(user.id))}">
+                    <div class="flex items-center space-x-3 flex-1 min-w-0">
+                        ${user.profile_photo_path 
+                            ? `<img src="${escapeHtml(user.profile_photo_path)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0" data-avatar>`
+                            : `<div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0" data-avatar>${escapeHtml(modalInitial(user.username))}</div>`
+                        }
+                        <div class="min-w-0 flex-1">
+                            <a href="/profile/${escapeHtml(user.username)}" class="profile-link text-sm font-semibold text-gray-900 hover:underline block truncate" data-profile-link>
+                                <span data-full-name>${escapeHtml(user.full_name)}</span>
+                            </a>
+                            <p class="text-xs text-gray-500 truncate" data-username-display>@${escapeHtml(user.username)}</p>
+                        </div>
+                    </div>
+                    ${actionButton}
+                </div>
+            `;
+        }).join('');
     }
     
     // Follow/Unfollow handlers
@@ -667,6 +737,7 @@ $reactionEmojis = [
         
         const userId = pendingUnfollowUserId;
         const unfollowBtn = pendingUnfollowBtn;
+        const isHeaderButton = unfollowBtn.classList.contains('profile-header-unfollow-btn');
         
         hideUnfollowModal();
         
@@ -677,18 +748,27 @@ $reactionEmojis = [
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                loadData(currentTab);
+                if (isHeaderButton) {
+                    // Change header button back to "Follow" state
+                    unfollowBtn.textContent = 'Follow';
+                    unfollowBtn.className = 'profile-header-follow-btn px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors';
+                    unfollowBtn.disabled = false;
+                    showToast('Unfollowed successfully');
+                } else {
+                    // Reload modal data for modal list buttons
+                    loadData(currentTab);
+                }
             } else {
                 showToast(data.message || 'Failed to unfollow user');
                 unfollowBtn.disabled = false;
-                unfollowBtn.textContent = 'Unfollow';
+                unfollowBtn.textContent = isHeaderButton ? 'Following' : 'Unfollow';
             }
         })
         .catch(error => {
             console.error('Unfollow error:', error);
             showToast('An error occurred while unfollowing');
             unfollowBtn.disabled = false;
-            unfollowBtn.textContent = 'Unfollow';
+            unfollowBtn.textContent = isHeaderButton ? 'Following' : 'Unfollow';
         });
     });
 

@@ -5,13 +5,15 @@ namespace App\Controller;
 use App\Controller\AppController;
 use Cake\Http\Exception\BadRequestException;
 use Cake\Http\Exception\NotFoundException;
+use Cake\ORM\Query;
 
 class DashboardPostsController extends AppController
 {
     public function initialize(): void
     {
         parent::initialize();
-        $this->viewBuilder()->disableAutoLayout();
+        // Disable layout for AJAX actions (create, edit, delete)
+        // The view action needs the full layout
     }
 
     /**
@@ -19,6 +21,7 @@ class DashboardPostsController extends AppController
      */
     public function create()
     {
+        $this->viewBuilder()->disableAutoLayout();
         $this->autoRender = false; // Prevent view rendering for JSON response
         $this->request->allowMethod(['post']);
         
@@ -199,6 +202,8 @@ class DashboardPostsController extends AppController
      */
     public function edit($postId = null)
     {
+        $this->viewBuilder()->disableAutoLayout();
+        $this->autoRender = false;
         $this->request->allowMethod(['put', 'patch', 'post']);
         
         if (!$postId) {
@@ -277,6 +282,8 @@ class DashboardPostsController extends AppController
      */
     public function delete($postId = null)
     {
+        $this->viewBuilder()->disableAutoLayout();
+        $this->autoRender = false;
         $this->request->allowMethod(['delete', 'post']);
         
         if (!$postId) {
@@ -376,6 +383,171 @@ class DashboardPostsController extends AppController
             // Log but don't fail the main delete operation
             error_log('Cascade delete error for post ' . $postId . ': ' . $e->getMessage());
         }
+    }
+
+    /**
+     * View a single post
+     */
+    public function view($id = null)
+    {
+        if (!$id) {
+            throw new NotFoundException(__('Post not found'));
+        }
+
+        // Get current user ID
+        $identity = $this->request->getAttribute('identity');
+        $currentUserId = $identity ? ($identity->id ?? $identity['id'] ?? null) : null;
+        $currentUser = $identity ? (object)[
+            'id' => $currentUserId,
+            'username' => $identity->username ?? $identity['username'] ?? 'User',
+            'full_name' => $identity->full_name ?? $identity['full_name'] ?? 'Full Name',
+            'profile_photo_path' => $identity->profile_photo_path ?? $identity['profile_photo_path'] ?? null
+        ] : (object)['username' => 'Guest', 'full_name' => 'Guest User'];
+
+        $postsTable = $this->fetchTable('Posts');
+        
+        // Build containments array (same as DashboardMiddleColumnController)
+        $contain = [
+            'Users' => function (Query $q) {
+                return $q->select(['id', 'username', 'full_name', 'profile_photo_path']);
+            },
+            'Reactions' => function (Query $q) {
+                return $q->select(['id', 'target_id', 'user_id', 'reaction_type']);
+            },
+            'Mentions' => function (Query $q) {
+                return $q->contain(['MentionedUsers' => function (Query $sub) {
+                    return $sub->select(['id', 'username', 'gender']);
+                }]);
+            },
+            'PostAttachments' => function (Query $q) {
+                return $q->select(['id', 'post_id', 'file_path', 'file_type', 'file_size', 'display_order'])
+                    ->where(['upload_status' => 'completed'])
+                    ->orderBy(['display_order' => 'ASC']);
+            }
+        ];
+        
+        // Fetch the single post
+        $post = $postsTable->find()
+            ->contain($contain)
+            ->where(['Posts.id' => $id, 'Posts.deleted_at IS' => null])
+            ->first();
+
+        if (!$post) {
+            // Redirect to dashboard instead of showing error
+            $this->Flash->error(__('Post not found or has been deleted.'));
+            return $this->redirect(['controller' => 'Dashboard', 'action' => 'index']);
+        }
+
+        // Process post to add reaction summary and user's reaction
+        $commentCounts = [];
+        $commentsTable = $this->fetchTable('Comments');
+        $countsQuery = $commentsTable->find()
+            ->select([
+                'post_id',
+                'count' => $commentsTable->find()->func()->count('*'),
+            ])
+            ->where([
+                'post_id' => $post->id,
+                'deleted_at IS' => null,
+            ])
+            ->groupBy('post_id');
+
+        foreach ($countsQuery as $row) {
+            $commentCounts[$row->post_id] = (int)$row->count;
+        }
+
+        // Count reactions by type
+        $reactionCounts = [];
+        $userReaction = null;
+        
+        if (!empty($post->reactions)) {
+            foreach ($post->reactions as $reaction) {
+                $type = $reaction->reaction_type;
+                if (!isset($reactionCounts[$type])) {
+                    $reactionCounts[$type] = 0;
+                }
+                $reactionCounts[$type]++;
+                
+                // Check if current user has reacted
+                if ($currentUserId && $reaction->user_id == $currentUserId) {
+                    $userReaction = $type;
+                }
+            }
+        }
+        
+        // Add computed fields
+        $post->reaction_counts = $reactionCounts;
+        $post->user_reaction = $userReaction;
+        $post->total_reactions = array_sum($reactionCounts);
+        
+        // Parse attachments if they exist
+        $post->attachments = [];
+        if (!empty($post->content_image_path)) {
+            $decoded = json_decode($post->content_image_path, true);
+            if (is_array($decoded)) {
+                $post->attachments = $decoded;
+            } else {
+                $post->attachments = explode(',', $post->content_image_path);
+            }
+        }
+
+        $post->comments_count = $commentCounts[$post->id] ?? 0;
+        $post->mention_palette = $this->buildMentionPalette($post->mentions ?? []);
+
+        // Get friend suggestions for right sidebar
+        $friendsCount = 0;
+        $suggestions = [];
+        if ($currentUserId) {
+            $friendshipsTable = $this->fetchTable('Friendships');
+            $friendsCount = $friendshipsTable->getFriendsCount($currentUserId);
+            $friendSuggestions = $friendshipsTable->getSuggestions($currentUserId, 6);
+            
+            foreach ($friendSuggestions as $user) {
+                $mutualCount = $friendshipsTable->getMutualFriendsCount($currentUserId, $user->id);
+                $suggestions[] = [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'full_name' => $user->full_name,
+                    'profile_photo_path' => $user->profile_photo_path,
+                    'mutual_count' => $mutualCount
+                ];
+            }
+        }
+
+        // Detect mobile
+        $detect = new \Detection\MobileDetect();
+        $isMobile = $detect->isMobile();
+        $isTablet = $detect->isTablet();
+        $isMobileView = ($isMobile && !$isTablet);
+
+        $this->set(compact('post', 'currentUser', 'suggestions', 'friendsCount', 'isMobileView'));
+        $this->set('title', 'Post by ' . $post->user->username);
+    }
+
+    private function buildMentionPalette(iterable $mentions): array
+    {
+        $palette = [];
+        foreach ($mentions as $mention) {
+            $user = $mention->mentioned_user ?? null;
+            if (!$user || empty($user->username)) {
+                continue;
+            }
+            $palette[] = [
+                'username' => $user->username,
+                'color' => $this->mapGenderToColor($user->gender ?? null),
+            ];
+        }
+
+        return $palette;
+    }
+
+    private function mapGenderToColor(?string $gender): string
+    {
+        return match ($gender) {
+            'Male' => 'blue',
+            'Female' => 'pink',
+            default => 'green',
+        };
     }
 
     /**

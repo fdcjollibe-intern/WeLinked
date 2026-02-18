@@ -86,9 +86,16 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/dashboard/comments/list', ['controller' => 'DashboardComments', 'action' => 'list']);
         $builder->connect('/dashboard/comments/edit', ['controller' => 'DashboardComments', 'action' => 'edit']);
         $builder->connect('/dashboard/comments/delete', ['controller' => 'DashboardComments', 'action' => 'delete']);
+        $builder->connect('/dashboard/comments/add', ['controller' => 'DashboardComments', 'action' => 'add']);
+        
+        // Single post view
+        $builder->connect('/post/{id}', ['controller' => 'DashboardPosts', 'action' => 'view'])
+            ->setPass(['id'])
+            ->setPatterns(['id' => '\d+']);
         
         // Reactions API (toggle/add/remove)
         $builder->connect('/dashboard/posts/react', ['controller' => 'DashboardReactions', 'action' => 'react']);
+        $builder->connect('/dashboard/reactions/react', ['controller' => 'DashboardReactions', 'action' => 'react']);
 
         // Mentions API - Autocomplete for @mentions
         $builder->connect('/api/mentions/search', ['controller' => 'Mentions', 'action' => 'search']);

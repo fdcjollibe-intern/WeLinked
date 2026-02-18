@@ -69,78 +69,24 @@
   function createPhotoViewerModal() {
     const modal = document.createElement('div');
     modal.id = 'photo-viewer-modal';
-    modal.className = 'fixed inset-0 bg-black bg-opacity-90 z-[100] hidden items-center justify-center';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-95 z-[100] hidden items-center justify-center';
     modal.innerHTML = `
-      <div class="photo-viewer-container w-full h-full max-w-7xl mx-auto flex ${isMobile() ? 'flex-col' : 'flex-row'} p-4">
-        <!-- Photo Section -->
-        <div class="photo-section ${isMobile() ? 'w-full h-1/2' : 'w-2/3 h-full'} flex items-center justify-center relative">
-          <button id="close-photo-viewer" class="absolute top-4 right-4 text-white text-3xl z-10 hover:text-gray-300">&times;</button>
-          <button id="prev-photo" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-40 text-white p-3 rounded-full z-10">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-          </button>
-          <img id="photo-viewer-img" src="" alt="Photo" class="max-w-full max-h-full object-contain">
-          <button id="next-photo" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-40 text-white p-3 rounded-full z-10">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </button>
-        </div>
+      <div class="photo-viewer-container w-full h-full flex items-center justify-center relative p-4">
+        <!-- Close Button -->
+        <button id="close-photo-viewer" class="absolute top-4 right-4 text-white text-3xl z-20 hover:text-gray-300 transition-colors">&times;</button>
         
-        <!-- Details Section -->
-        <div class="details-section ${isMobile() ? 'w-full h-1/2 overflow-y-auto' : 'w-1/3 h-full overflow-y-auto'} bg-white ${isMobile() ? 'mt-4 rounded-t-xl' : 'ml-4 rounded-xl'}">
-          <div class="p-4">
-            <!-- Post Header -->
-            <div class="flex items-center space-x-3 mb-4 pb-4 border-b">
-              <div id="viewer-user-avatar" class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">U</div>
-              <div>
-                <h3 id="viewer-username" class="font-semibold text-gray-900">Username</h3>
-                <p id="viewer-timestamp" class="text-xs text-gray-400">Just now</p>
-              </div>
-            </div>
-            
-            <!-- Caption -->
-            <p id="viewer-caption" class="text-gray-700 mb-4"></p>
-            
-            <!-- Reactions Summary -->
-            <div class="flex items-center justify-between text-sm text-gray-500 mb-4 pb-4 border-b">
-              <div class="flex items-center space-x-1">
-                <span id="viewer-reactions" style="text-shadow:-1px -1px 0 white,1px -1px 0 white,-1px 1px 0 white,1px 1px 0 white,0 -1px 0 white,0 1px 0 white,-1px 0 0 white,1px 0 0 white;display:flex;align-items:center">❤️</span>
-                <span id="viewer-reaction-count">0</span>
-              </div>
-              <div class="flex items-center space-x-4">
-                <span id="viewer-comments-count">0 comments</span>
-                <span id="viewer-shares-count">0 shares</span>
-              </div>
-            </div>
-            
-            <!-- Action Buttons -->
-            <div class="flex items-center justify-around py-2 border-b mb-4">
-              <button class="flex items-center space-x-2 px-3 py-1 hover:bg-gray-50 rounded">
-                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-                <span class="text-sm font-medium">Like</span>
-              </button>
-              <button class="flex items-center space-x-2 px-3 py-1 hover:bg-gray-50 rounded">
-                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                <span class="text-sm font-medium">Comment</span>
-              </button>
-              <button class="flex items-center space-x-2 px-3 py-1 hover:bg-gray-50 rounded">
-                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                <span class="text-sm font-medium">Share</span>
-              </button>
-            </div>
-            
-            <!-- Comments Section -->
-            <div id="viewer-comments" class="space-y-3">
-              <p class="text-sm text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>
-            </div>
-            
-            <!-- Comment Input -->
-            <div class="mt-4 pt-4 border-t sticky bottom-0 bg-white">
-              <div class="flex items-center space-x-2">
-                <input type="text" placeholder="Write a comment..." class="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-blue-500">
-                <button class="bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-blue-600">Post</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Previous Button -->
+        <button id="prev-photo" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-40 text-white p-3 rounded-full z-10 transition-all">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        
+        <!-- Image -->
+        <img id="photo-viewer-img" src="" alt="Photo" class="max-w-full max-h-full object-contain">
+        
+        <!-- Next Button -->
+        <button id="next-photo" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-40 text-white p-3 rounded-full z-10 transition-all">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
       </div>
     `;
     document.body.appendChild(modal);
@@ -155,6 +101,7 @@
     }
 
     let currentIndex = startIndex || 0;
+    
     const img = document.getElementById('photo-viewer-img');
     const prevBtn = document.getElementById('prev-photo');
     const nextBtn = document.getElementById('next-photo');
@@ -164,32 +111,6 @@
       img.src = images[currentIndex];
       prevBtn.style.display = currentIndex > 0 ? 'block' : 'none';
       nextBtn.style.display = currentIndex < images.length - 1 ? 'block' : 'none';
-    }
-
-    // Populate post details from postEl if available
-    if (postEl) {
-      const username = postEl.querySelector('h3')?.textContent || 'User';
-      const timestamp = postEl.querySelector('.text-xs.text-gray-400')?.textContent || 'Just now';
-      const caption = postEl.querySelector('.text-gray-700')?.textContent || '';
-      const reactions = postEl.querySelector('.reaction-emojis')?.innerHTML || '';
-      const reactionCount = postEl.querySelector('.reaction-count')?.textContent || '0';
-      const commentsCount = postEl.querySelector('.comments-count')?.textContent || '0 comments';
-      const sharesCount = postEl.querySelector('.shares-count')?.textContent || '0 shares';
-
-      document.getElementById('viewer-username').textContent = username;
-      document.getElementById('viewer-timestamp').textContent = timestamp;
-      document.getElementById('viewer-caption').textContent = caption;
-      document.getElementById('viewer-reactions').innerHTML = reactions;
-      document.getElementById('viewer-reaction-count').textContent = reactionCount;
-      document.getElementById('viewer-comments-count').textContent = commentsCount;
-      document.getElementById('viewer-shares-count').textContent = sharesCount;
-
-      // Set avatar
-      const avatarEl = postEl.querySelector('.w-10.h-10.rounded-full > div');
-      if (avatarEl) {
-        document.getElementById('viewer-user-avatar').innerHTML = avatarEl.innerHTML;
-        document.getElementById('viewer-user-avatar').className = avatarEl.className;
-      }
     }
 
     updatePhoto();

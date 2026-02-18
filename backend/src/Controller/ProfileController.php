@@ -56,7 +56,8 @@ class ProfileController extends AppController
             $currentUser = $identity ? (object)[
                 'id' => $currentUserId,
                 'username' => $identity->username ?? $identity['username'] ?? 'User',
-                'fullname' => $identity->full_name ?? $identity['full_name'] ?? 'Full Name'
+                'fullname' => $identity->full_name ?? $identity['full_name'] ?? 'Full Name',
+                'profile_photo_path' => $identity->profile_photo_path ?? $identity['profile_photo_path'] ?? null
             ] : (object)['username' => 'Guest', 'fullname' => 'Guest User'];
             
             $this->set(compact('currentUser', 'identity'));
@@ -67,7 +68,10 @@ class ProfileController extends AppController
         
         $postsTable = $this->fetchTable('Posts');
         $postCount = $postsTable->find()
-            ->where(['user_id' => $user->id])
+            ->where([
+                'user_id' => $user->id,
+                'deleted_at IS' => null
+            ])
             ->count();
         
         // Get followers and following counts
@@ -80,10 +84,17 @@ class ProfileController extends AppController
         $detect = new \Detection\MobileDetect();
         $isMobileView = $detect->isMobile() && !$detect->isTablet();
         
+        // Check if current user is following this profile
+        $isOwnProfile = ($currentUserId === $user->id);
+        $isFollowing = false;
+        if ($currentUserId && !$isOwnProfile) {
+            $isFollowing = $friendshipsTable->isFollowing($currentUserId, $user->id);
+        }
+        
         // If requested via AJAX, return only the profile content element
         if ($this->request->is('ajax') || $this->request->getQuery('partial')) {
             $this->viewBuilder()->disableAutoLayout();
-            $this->set(compact('user', 'postCount', 'followersCount', 'followingCount', 'identity', 'isMobileView', 'posts'));
+            $this->set(compact('user', 'postCount', 'followersCount', 'followingCount', 'identity', 'isMobileView', 'posts', 'isOwnProfile', 'isFollowing'));
             $this->render('/element/Profile/profile_content');
             return;
         }
@@ -92,13 +103,14 @@ class ProfileController extends AppController
         $currentUser = $identity ? (object)[
             'id' => $currentUserId,
             'username' => $identity->username ?? $identity['username'] ?? 'User',
-            'fullname' => $identity->full_name ?? $identity['full_name'] ?? 'Full Name'
+            'fullname' => $identity->full_name ?? $identity['full_name'] ?? 'Full Name',
+            'profile_photo_path' => $identity->profile_photo_path ?? $identity['profile_photo_path'] ?? null
         ] : (object)['username' => 'Guest', 'fullname' => 'Guest User'];
         
         $this->log("ProfileController::index - Rendering full dashboard layout for non-AJAX request", 'debug');
         
         // Render full dashboard layout with profile in middle column
-        $this->set(compact('user', 'postCount', 'followersCount', 'followingCount', 'identity', 'isMobileView', 'currentUser', 'posts'));
+        $this->set(compact('user', 'postCount', 'followersCount', 'followingCount', 'identity', 'isMobileView', 'currentUser', 'posts', 'isOwnProfile', 'isFollowing'));
         $this->viewBuilder()->setTemplate('dashboard');
         $this->viewBuilder()->setLayout('default');
     }
@@ -137,11 +149,15 @@ class ProfileController extends AppController
         // Get followers
         $followersQuery = $friendshipsTable->getFollowers($user->id)->all();
         $followers = [];
+        
+        $this->log("ProfileController::followers - Found " . count($followersQuery) . " follower records for user {$user->id}", 'debug');
+        
         foreach ($followersQuery as $friendship) {
-            $follower = $friendship->followers;
+            // The association is 'Followers' but CakePHP accesses it as singular 'follower'
+            $follower = $friendship->follower;
             
             // Skip if follower data is null
-            if (!$follower || !$follower->id) {
+            if (!$follower || !isset($follower->id)) {
                 $this->log("Skipping null follower in friendship ID: " . $friendship->id, 'warning');
                 continue;
             }
@@ -156,6 +172,8 @@ class ProfileController extends AppController
                 'is_following' => $isFollowing
             ];
         }
+        
+        $this->log("ProfileController::followers - Returning " . count($followers) . " followers", 'debug');
         
         return $this->response->withType('application/json')
             ->withStringBody(json_encode(['success' => true, 'followers' => $followers]));

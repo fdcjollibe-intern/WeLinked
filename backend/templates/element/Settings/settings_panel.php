@@ -849,21 +849,6 @@
                 openCropper(file, scope);
             });
         }
-
-        // Ensure delegated anchors keep working when loaded outside dashboard
-        if (!document.__settingsLinkHandlerBound) {
-            document.__settingsLinkHandlerBound = true;
-            document.addEventListener('click', (event) => {
-                const anchor = event.target.closest && event.target.closest('a[href^="/settings"]');
-                if (!anchor) {
-                    return;
-                }
-                if (window.loadMiddleColumn) {
-                    event.preventDefault();
-                    window.loadMiddleColumn(anchor.getAttribute('href'));
-                }
-            });
-        }
     };
 
     const runInitializers = () => window.initSettingsHandlers(document);

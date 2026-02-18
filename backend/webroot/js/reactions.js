@@ -29,9 +29,17 @@
 
   // Update reaction button state based on user's reaction
   function updateButtonState(btn, reactionKey) {
+    console.log('[reactions.js] updateButtonState called:', { 
+      btn: btn, 
+      reactionKey: reactionKey,
+      isCommentBtn: btn?.classList.contains('comment-reaction-btn')
+    });
     const icon = ensureHeartIcon(btn);
     const label = btn.querySelector('.reaction-label');
-    if (!label) return;
+    if (!label) {
+      console.log('[reactions.js] No reaction-label found in button!');
+      return;
+    }
     const emojiBadge = btn.querySelector('.reaction-emoji-active');
 
     if (!reactionKey || reactionKey === '') {
@@ -190,9 +198,19 @@
     }
     if (!btn || !targetId) return;
 
+    // Prevent double-execution: check if request is already in progress
+    if (btn.dataset.reactionPending === 'true') {
+      console.log('[reactions.js] Request already in progress, ignoring duplicate call');
+      return;
+    }
+
     const currentReaction = btn.dataset.userReaction || '';
     const togglingOff = currentReaction === reactionKey;
 
+    // Mark as pending to prevent double-clicks
+    btn.dataset.reactionPending = 'true';
+
+    // Optimistic UI update
     updateButtonState(btn, togglingOff ? '' : reactionKey);
 
     console.log('[reactions.js] Performing reaction:', {
@@ -216,9 +234,22 @@
         reaction_type: reactionKey 
       })
     })
-    .then(r => {
+    .then(async r => {
       console.log('[reactions.js] Response status:', r.status);
-      return r.json();
+      console.log('[reactions.js] Response headers:', r.headers.get('content-type'));
+      
+      // Get response text first to debug
+      const text = await r.text();
+      console.log('[reactions.js] Response text:', text);
+      
+      // Try to parse as JSON
+      try {
+        return JSON.parse(text);
+      } catch (parseError) {
+        console.error('[reactions.js] JSON parse failed:', parseError);
+        console.error('[reactions.js] Raw response:', text);
+        throw new Error('Server returned invalid JSON: ' + text.substring(0, 100));
+      }
     })
     .then(json => {
       console.log('[reactions.js] Response data:', json);
@@ -232,6 +263,16 @@
           // Update reaction count for comments
           updateCommentReactionCount(btn, json.counts || {});
         }
+        
+        // Dispatch event for other components (e.g., modals) to listen to
+        window.dispatchEvent(new CustomEvent('reaction:updated', {
+          detail: {
+            target_type: targetType,
+            target_id: targetId,
+            counts: json.counts || {},
+            user_reaction: json.user_reaction || ''
+          }
+        }));
       } else {
         console.error('[reactions.js] Reaction failed:', json);
         alert('Failed to save reaction: ' + (json.error || json.message || 'Unknown error'));
@@ -242,6 +283,10 @@
       console.error('[reactions.js] Reaction error:', err);
       alert('Error sending reaction: ' + err.message);
       updateButtonState(btn, currentReaction);
+    })
+    .finally(() => {
+      // Clear pending flag after request completes
+      btn.dataset.reactionPending = 'false';
     });
   }
   
@@ -276,6 +321,9 @@
     });
   }
 
+  // Make initializeReactionButtons globally accessible for dynamic content
+  window.initializeReactionButtons = initializeReactionButtons;
+
   document.addEventListener('DOMContentLoaded', () => {
     const picker = createPicker();
     
@@ -285,7 +333,7 @@
     let longPressTimer = null;
     let isDragging = false;
 
-    // Desktop: hover to show picker after 800ms (for both posts and comments)
+    // Desktop: hover to show picker after 900ms (for both posts and comments)
     document.body.addEventListener('mouseover', (e) => {
       const btn = e.target.closest('.reaction-btn, .comment-reaction-btn');
       if (btn && !('ontouchstart' in window)) {
@@ -297,7 +345,7 @@
           const x = rect.left + (rect.width / 2) - 250;
           const y = rect.top - 90;
           showPicker(picker, Math.max(10, x), Math.max(10, y), postOrComment, btn);
-        }, 800);
+        }, 900);
       }
     });
 
@@ -320,6 +368,14 @@
     document.body.addEventListener('click', (e) => {
       const btn = e.target.closest('.reaction-btn, .comment-reaction-btn');
       if (btn && picker.style.visibility === 'hidden') {
+        // Check if already processed this event
+        if (e._reactionProcessed) {
+          console.log('[reactions.js] Reaction event already processed, skipping');
+          return;
+        }
+        e._reactionProcessed = true;
+        e.stopImmediatePropagation();
+        
         const element = btn.closest('.post, .comment-item');
         if (element) performReaction(element, 'like', btn);
       }

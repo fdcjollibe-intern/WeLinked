@@ -140,7 +140,7 @@ $currentFeed = $feed ?? 'friends';
                     arsort($reactionCounts);
                     $topReactions = array_slice(array_keys($reactionCounts), 0, 3);
                 ?>
-                <article class="post bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5" data-index="<?= $idx ?>" data-post-id="<?= h($post->id ?? $idx) ?>">
+                <article id="post-<?= h($post->id ?? $idx) ?>" class="post bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5" data-index="<?= $idx ?>" data-post-id="<?= h($post->id ?? $idx) ?>">
                     <!-- Post Header -->
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center space-x-3">
@@ -228,52 +228,50 @@ $currentFeed = $feed ?? 'friends';
 
                     <!-- Post Images/Attachments -->
                     <?php if (!empty($imageAttachments)): ?>
-                        <div class="post-gallery mt-3 mb-4 overflow-hidden rounded-xl bg-gray-50">
-                            <?php 
-                            // Normalize attachments to URLs
-                            $imageUrls = [];
-                            foreach ($imageAttachments as $img) {
-                                if (is_object($img) && isset($img->file_path)) {
-                                    $imageUrls[] = $img->file_path;
-                                } elseif (is_string($img)) {
-                                    $imageUrls[] = $img;
-                                }
+                        <?php 
+                        // Normalize attachments to URLs
+                        $imageUrls = [];
+                        foreach ($imageAttachments as $img) {
+                            if (is_object($img) && isset($img->file_path)) {
+                                $imageUrls[] = $img->file_path;
+                            } elseif (is_string($img)) {
+                                $imageUrls[] = $img;
                             }
-                            ?>
-                            <?php if (count($imageUrls) === 1): ?>
-                                <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-auto object-cover">
-                            <?php elseif (count($imageUrls) === 2): ?>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <?php foreach ($imageUrls as $img): ?>
-                                        <img src="<?= h($img) ?>" alt="Post image" class="w-full h-full object-cover">
-                                    <?php endforeach; ?>
+                        }
+                        $imageUrlsJson = json_encode($imageUrls);
+                        ?>
+                        <?php if (count($imageUrls) === 1): ?>
+                            <div class="photo-collage single-photo cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>' data-index="0">
+                                <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-auto rounded-xl object-cover max-h-[500px]">
+                            </div>
+                        <?php elseif (count($imageUrls) === 2): ?>
+                            <div class="photo-collage two-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>'>
+                                <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-64 object-cover" data-index="0">
+                                <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-64 object-cover" data-index="1">
+                            </div>
+                        <?php elseif (count($imageUrls) === 3): ?>
+                            <div class="photo-collage three-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>'>
+                                <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2" data-index="0">
+                                <div class="grid grid-rows-2 gap-2">
+                                    <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="1">
+                                    <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="2">
                                 </div>
-                            <?php elseif (count($imageUrls) === 3): ?>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
-                                    <div class="grid grid-rows-2 gap-2">
-                                        <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover">
-                                        <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover">
-                                    </div>
-                                </div>
-                            <?php else: ?>
-                                <!-- 4+ photos: show 3 with +N overlay -->
-                                <div class="grid grid-cols-2 gap-2">
-                                    <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2">
-                                    <div class="grid grid-rows-2 gap-2">
-                                        <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover">
-                                        <div class="relative">
-                                            <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover">
-                                            <?php if (count($imageUrls) > 3): ?>
-                                                <div class="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-                                                    <span class="text-white text-2xl font-bold">+<?= count($imageUrls) - 3 ?></span>
-                                                </div>
-                                            <?php endif; ?>
+                            </div>
+                        <?php else: ?>
+                            <!-- 4+ photos: show 3 with +N overlay -->
+                            <div class="photo-collage multi-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>'>
+                                <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2" data-index="0">
+                                <div class="grid grid-rows-2 gap-2">
+                                    <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="1">
+                                    <div class="relative">
+                                        <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="2">
+                                        <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center pointer-events-none">
+                                            <span class="text-white text-3xl font-bold">+<?= count($imageUrls) - 3 ?></span>
                                         </div>
                                     </div>
                                 </div>
-                            <?php endif; ?>
-                        </div>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <!-- Reactions Summary & Counts -->
@@ -297,17 +295,27 @@ $currentFeed = $feed ?? 'friends';
                             <span class="comments-count" data-count="<?= $commentTotal ?>">
                                 <?= h(__n('{0} comment', '{0} comments', $commentTotal, $commentTotal)) ?>
                             </span>
-                            <span class="shares-count">0 shares</span>
                         </div>
                     </div>
                     
                     <!-- Action Buttons -->
                     <div class="border-t border-gray-100 pt-2 flex items-center justify-around">
                         <button class="reaction-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors" data-user-reaction="<?= h($userReaction ?? '') ?>">
-                            <svg class="like-icon w-5 h-5 <?= $userReaction ? 'text-red-500 fill-current' : 'text-gray-500' ?>" fill="<?= $userReaction ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                            </svg>
-                            <span class="reaction-label text-sm font-medium <?= $userReaction ? 'text-red-500' : 'text-gray-700' ?>">
+                            <?php if ($userReaction === 'like'): ?>
+                                <svg class="like-icon w-5 h-5 text-red-500" fill="currentColor" stroke="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                </svg>
+                            <?php elseif ($userReaction && isset($reactionEmojis[$userReaction])): ?>
+                                <svg class="like-icon w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:none">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                </svg>
+                                <span class="reaction-emoji-active text-xl leading-none mr-1"><?= h($reactionEmojis[$userReaction]) ?></span>
+                            <?php else: ?>
+                                <svg class="like-icon w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                </svg>
+                            <?php endif; ?>
+                            <span class="reaction-label text-sm font-medium <?= $userReaction === 'like' ? 'text-red-500' : 'text-gray-700' ?>">
                                 <?= $userReaction ? ucfirst($userReaction) : 'Like' ?>
                             </span>
                         </button>
@@ -317,12 +325,6 @@ $currentFeed = $feed ?? 'friends';
                             </svg>
                             <span class="text-sm font-medium text-gray-700">Comment</span>
                         </button>
-                        <button class="share-btn flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-                            </svg>
-                            <span class="text-sm font-medium text-gray-700">Share</span>
-                        </button>
                     </div>
                 </article>
             <?php endforeach; ?>
@@ -331,8 +333,8 @@ $currentFeed = $feed ?? 'friends';
                 <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
                 </svg>
-                <p class="text-lg font-medium">No posts yet</p>
-                <p class="text-sm text-gray-400 mt-2">Be the first to share something!</p>
+                <p class="text-lg font-medium">No new posts yet</p>
+                <p class="text-sm text-gray-400 mt-2">Share something!</p>
             </div>
         <?php endif; ?>
     </div>
@@ -351,5 +353,11 @@ if (window.initializeMiddleColumn) {
     window.initializeMiddleColumn();
 } else {
     console.warn('[MiddleColumn] ⚠️ initializeMiddleColumn not found on window');
+}
+
+// Initialize reaction buttons for dynamically loaded content
+if (window.initializeReactionButtons) {
+    console.log('[MiddleColumn] 🎯 Calling initializeReactionButtons() for dynamic content');
+    window.initializeReactionButtons();
 }
 </script>

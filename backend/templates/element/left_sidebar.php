@@ -20,7 +20,7 @@
                 </div>
             </div>
         </a>
-        <p href="#" data-nav="profile" class="block hover:underline cursor-pointer">
+        <p data-nav="profile" class="block hover:underline cursor-pointer">
             <h3 class="font-semibold text-gray-900" data-user-fullname>
                 <?= h($currentUser->full_name ?? $currentUser->fullname ?? 'Your Name') ?>
             </h3>
@@ -220,6 +220,20 @@
         
         // Make loadMiddleColumn globally accessible
         window.loadMiddleColumn = loadMiddleColumn;
+        
+        // Helper to check unsaved changes and optionally show modal
+        async function checkUnsavedAndNavigate(navigateCallback) {
+            if (window.globalHasUnsavedChanges && window.globalShowUnsavedModal) {
+                const shouldDiscard = await window.globalShowUnsavedModal();
+                if (shouldDiscard) {
+                    window.globalHasUnsavedChanges = false;
+                    navigateCallback();
+                }
+                // If user chooses to keep editing, do nothing
+            } else {
+                navigateCallback();
+            }
+        }
 
         // Handle navigation clicks using delegation
         document.body.addEventListener('click', (e) => {
@@ -234,23 +248,27 @@
                 return;
             }
 
-            updateNavigationState(action);
+            // Check for unsaved changes before navigating
+            checkUnsavedAndNavigate(() => {
+                updateNavigationState(action);
 
-            if (action === 'profile') {
-                const profileUrl = '/profile/' + currentUsername;
-                loadMiddleColumn(profileUrl);
-                history.pushState({}, '', profileUrl);
-            } else if (action === 'settings') {
-                loadMiddleColumn('/settings');
-                history.pushState({}, '', '/settings');
-            } else if (action === 'home') {
-                loadMiddleColumn('/dashboard/middle-column');
-                history.pushState({}, '', '/dashboard');
-            } else if (action === 'friends') {
-                loadMiddleColumn('/friends');
-                history.pushState({}, '', '/friends');
-            } else if (action === 'messages') {
-            }
+                if (action === 'profile') {
+                    const profileUrl = '/profile/' + currentUsername;
+                    loadMiddleColumn(profileUrl);
+                    history.pushState({}, '', profileUrl);
+                } else if (action === 'settings') {
+                    loadMiddleColumn('/settings');
+                    history.pushState({}, '', '/settings');
+                } else if (action === 'home') {
+                    loadMiddleColumn('/dashboard/middle-column');
+                    history.pushState({}, '', '/dashboard');
+                } else if (action === 'friends') {
+                    loadMiddleColumn('/friends');
+                    history.pushState({}, '', '/friends');
+                } else if (action === 'messages') {
+                }
+            });
+            return;
         }
 
         // Intercept settings internal links (delegated) so they render only middle column
@@ -260,8 +278,10 @@
             if (!middleColumn) return;
             e.preventDefault();
             const href = settingsAnchor.getAttribute('href');
-            loadMiddleColumn(href);
-            history.pushState({}, '', href);
+            checkUnsavedAndNavigate(() => {
+                loadMiddleColumn(href);
+                history.pushState({}, '', href);
+            });
             return;
         }
 
@@ -272,9 +292,11 @@
             if (!middleColumn) return;
             e.preventDefault();
             const href = profileAnchor.getAttribute('href');
-            loadMiddleColumn(href);
-            history.pushState({}, '', href);
-            updateNavigationState('profile');
+            checkUnsavedAndNavigate(() => {
+                loadMiddleColumn(href);
+                history.pushState({}, '', href);
+                updateNavigationState('profile');
+            });
             return;
         }
         });
@@ -319,15 +341,15 @@
 
         // Function to update navigation state and manage hover behavior
         function updateNavigationState(activeNav) {
-        // Remove active state from all links and restore hover behavior
+        // Remove active state from all nav-link items and restore hover behavior
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('bg-blue-500', 'text-white');
             if (!link.classList.contains('hover:bg-gray-100')) link.classList.add('hover:bg-gray-100');
             link.classList.add('text-gray-600');
         });
 
-        // Add active state to the selected link and remove hover so it stays blue on hover
-        const activeLink = document.querySelector(`[data-nav="${activeNav}"]`);
+        // Add active state to the selected nav-link
+        const activeLink = document.querySelector(`.nav-link[data-nav="${activeNav}"]`);
         if (activeLink) {
             activeLink.classList.remove('text-gray-600', 'hover:bg-gray-100');
             activeLink.classList.add('bg-blue-500', 'text-white');

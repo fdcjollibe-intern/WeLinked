@@ -9,6 +9,8 @@
     // Expose CSRF token and current user ID for JavaScript
     window.csrfToken = '<?= $this->request->getAttribute('csrfToken') ?>';
     window.currentUserId = <?= json_encode($currentUser->id ?? null) ?>;
+    window.currentUserPhoto = <?= json_encode($currentUser->profile_photo_path ?? '') ?>;
+    window.currentUserInitial = <?= json_encode(strtoupper(substr($currentUser->username ?? 'U', 0, 1))) ?>;
 </script>
 
 <?php $navHasPhoto = !empty($currentUser->profile_photo_path); ?>
