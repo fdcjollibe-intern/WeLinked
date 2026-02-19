@@ -11,7 +11,10 @@ RUN apk add --no-cache \
     icu-dev \
     libxml2-dev \
     oniguruma-dev \
-    sqlite-dev
+    sqlite-dev \
+    autoconf \
+    g++ \
+    make
 
 # Install PHP extensions required by CakePHP 5.0
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -25,6 +28,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     simplexml \
     zip \
     gd
+
+# Install Redis extension via PECL
+RUN pecl install redis \
+    && docker-php-ext-enable redis
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer

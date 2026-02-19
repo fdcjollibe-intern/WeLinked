@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS posts (
     content_text TEXT NULL,
     content_image_path VARCHAR(255) NULL,
     location VARCHAR(255) NULL,
+    is_reel BOOLEAN NULL DEFAULT NULL COMMENT 'Whether this post should be displayed as a reel (true for posts with single video)',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
@@ -56,7 +57,8 @@ CREATE TABLE IF NOT EXISTS posts (
     INDEX idx_posts_created_at (created_at DESC),
     INDEX idx_posts_deleted_at (deleted_at),
     INDEX idx_posts_user_created (user_id, created_at DESC),
-    INDEX idx_posts_deleted_created (deleted_at, created_at DESC)
+    INDEX idx_posts_deleted_created (deleted_at, created_at DESC),
+    INDEX idx_posts_is_reel (is_reel)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================

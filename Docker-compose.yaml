@@ -55,8 +55,52 @@ services:
         networks:
             - welinked-network
 
+    # Redis - Pub/Sub for real-time notifications
+    redis:
+        image: redis:7-alpine
+        container_name: welinked-redis
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        command: redis-server --appendonly yes
+        restart: unless-stopped
+        networks:
+            - welinked-network
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 3s
+            retries: 3
+
+    # Node.js WebSocket Server - Real-time notifications
+    websocket:
+        build:
+            context: ./websocket-server
+            dockerfile: Dockerfile
+        container_name: welinked-websocket
+        ports:
+            - "3000:3000"
+        volumes:
+            - ./websocket-server:/app
+            - /app/node_modules
+        environment:
+            - PORT=3000
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+            - PHP_API_URL=http://nginx
+            - CORS_ORIGIN=*
+            - NODE_ENV=production
+        depends_on:
+            - redis
+            - backend
+        restart: unless-stopped
+        networks:
+            - welinked-network
+
 volumes:
     db_data:
+    redis_data:
 
 networks:
     welinked-network:
