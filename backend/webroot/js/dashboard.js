@@ -262,6 +262,8 @@
     });
     
     function switchFeed(tab, feed) {
+      console.log('[dashboard.js] Switching to feed:', feed);
+      
       // Update active tab styling
       const allTabs = middleComponent.querySelectorAll('.feed-tab');
       allTabs.forEach(function(t) {
@@ -272,6 +274,7 @@
       // Load posts for selected feed
       loadComponent('/dashboard/middle-column', 'middle-component', { feed: feed, start: 0 })
         .then(function() {
+          console.log('[dashboard.js] Feed loaded successfully:', feed);
           setupInteractions();
         });
     }

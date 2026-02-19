@@ -103,6 +103,9 @@ class DashboardPostsController extends AppController
                     $this->log("Saving " . count($media) . " attachments to post_attachments table...", 'info');
                     $attachmentsTable = $this->fetchTable('PostAttachments');
                     
+                    $videoCount = 0;
+                    $totalCount = 0;
+                    
                     foreach ($media as $index => $file) {
                         try {
                             $attachment = $attachmentsTable->newEmptyEntity();
@@ -113,8 +116,10 @@ class DashboardPostsController extends AppController
                             $resourceType = $file['resource_type'] ?? '';
                             if ($resourceType === 'video') {
                                 $attachment->file_type = 'video';
+                                $videoCount++;
                             } elseif (preg_match('/\.(mp4|webm|mov|avi|mkv)$/i', $file['url'])) {
                                 $attachment->file_type = 'video';
+                                $videoCount++;
                             } else {
                                 $attachment->file_type = 'image';
                             }
@@ -125,12 +130,20 @@ class DashboardPostsController extends AppController
                             
                             if ($attachmentsTable->save($attachment)) {
                                 $this->log("✓ Attachment $index saved (type: {$attachment->file_type})", 'info');
+                                $totalCount++;
                             } else {
                                 $this->log("✗ Failed to save attachment $index: " . json_encode($attachment->getErrors()), 'error');
                             }
                         } catch (\Exception $e) {
                             $this->log("✗ Exception saving attachment $index: " . $e->getMessage(), 'error');
                         }
+                    }
+                    
+                    // Mark as reel if exactly 1 video and no other attachments
+                    if ($totalCount === 1 && $videoCount === 1) {
+                        $post->is_reel = true;
+                        $postsTable->save($post);
+                        $this->log("✓ Post marked as reel (single video attachment)", 'info');
                     }
                 }
                 

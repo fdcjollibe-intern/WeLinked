@@ -1,18 +1,11 @@
 // comments.js — inline comment composer with attachments, delete, and time formatting
 (function(){
-  console.log('[comments.js] 🚀 Module loading...');
   const csrfToken = window.csrfToken || document.querySelector('meta[name="csrfToken"]')?.content || '';
-  console.log('[comments.js] CSRF token available:', !!csrfToken);
   
   // Check if we're on a page with posts
   setTimeout(() => {
     const posts = document.querySelectorAll('.post');
     const commentBtns = document.querySelectorAll('.comment-btn');
-    console.log('[comments.js] Found posts:', posts.length);
-    console.log('[comments.js] Found comment buttons:', commentBtns.length);
-    if (commentBtns.length > 0) {
-      console.log('[comments.js] First comment button:', commentBtns[0]);
-    }
   }, 1000);
 
   function escapeHtml(value) {
@@ -55,7 +48,11 @@
     let then;
     if (typeof datetime === 'string') {
       // Replace space with 'T' for proper ISO parsing if needed
-      const isoString = datetime.includes('T') ? datetime : datetime.replace(' ', 'T');
+      // Add 'Z' to indicate UTC timezone if not already present
+      let isoString = datetime.includes('T') ? datetime : datetime.replace(' ', 'T');
+      if (!isoString.includes('Z') && !isoString.includes('+') && !isoString.includes('-', 10)) {
+        isoString += 'Z';
+      }
       then = new Date(isoString);
     } else {
       then = new Date(datetime);
@@ -85,67 +82,45 @@
   }
 
   function handleCommentButtonClick(event) {
-    console.log('[comments.js] Click event captured:', event.target);
     const btn = event.target.closest('.comment-btn');
-    console.log('[comments.js] Found comment button:', btn);
     if (!btn) {
-      console.log('[comments.js] No comment button found, ignoring click');
       return;
     }
     
     // Check if already processed this event
     if (event._commentProcessed) {
-      console.log('[comments.js] Event already processed, skipping');
       return;
     }
     event._commentProcessed = true;
     
     event.preventDefault();
     event.stopImmediatePropagation(); // Stop other handlers from firing
-    console.log('[comments.js] Prevented default and stopped propagation, looking for post...');
     const post = btn.closest('.post');
-    console.log('[comments.js] Found post:', post);
     if (!post) {
-      console.log('[comments.js] ERROR: No post found!');
       return;
     }
-    console.log('[comments.js] Toggling composer...');
     toggleComposer(post);
   }
 
   function toggleComposer(post) {
-    console.log('[comments.js] toggleComposer called for post:', post.dataset.postId);
     let composer = post.querySelector('.comment-composer');
-    console.log('[comments.js] Existing composer:', composer);
     if (!composer) {
-      console.log('[comments.js] Building new composer...');
       composer = buildComposer(post);
       post.appendChild(composer);
       loadExistingComments(post);
-      console.log('[comments.js] Composer created, appended, and VISIBLE');
       // Focus the input after a short delay to ensure it's rendered
       setTimeout(() => {
         composer.querySelector('.comment-input')?.focus();
       }, 100);
     } else {
       // Toggle visibility on subsequent clicks
-      console.log('[comments.js] Composer exists, toggling visibility');
-      console.log('[comments.js] Has hidden class?', composer.classList.contains('hidden'));
       if (composer.classList.contains('hidden')) {
-        console.log('[comments.js] SHOWING composer');
         composer.classList.remove('hidden');
         composer.querySelector('.comment-input')?.focus();
       } else {
-        console.log('[comments.js] HIDING composer');
         composer.classList.add('hidden');
       }
     }
-    console.log('[comments.js] Final state:', {
-      hasHiddenClass: composer.classList.contains('hidden'),
-      display: window.getComputedStyle(composer).display,
-      height: composer.offsetHeight,
-      isVisible: composer.offsetHeight > 0
-    });
   }
 
   function buildComposer(post) {

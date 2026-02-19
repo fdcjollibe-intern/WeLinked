@@ -250,9 +250,10 @@ $navHasPhoto = !empty($currentUser->profile_photo_path);
                         <!-- Video Attachments -->
                         <?php if (!empty($videoAttachments)): ?>
                             <?php foreach ($videoAttachments as $video): ?>
-                                <div class="post-video mt-3 mb-4 overflow-hidden rounded-xl bg-black relative group">
+                                <div class="post-video mt-3 mb-3 rounded-xl bg-black flex items-center justify-center overflow-hidden" style="max-height: 500px;">
                                     <video 
-                                        class="w-full h-auto max-h-[600px] object-contain"
+                                        class="w-full h-auto object-contain"
+                                        style="max-height: 500px;"
                                         src="<?= h($video['file_path']) ?>"
                                         controls
                                         preload="metadata"
@@ -265,7 +266,7 @@ $navHasPhoto = !empty($currentUser->profile_photo_path);
                         <?php endif; ?>
                         
                         <!-- Post Images/Attachments -->
-                        <?php if (!empty($imageAttachments)): ?>
+                        <?php if (!empty($imageAttachments) && !($post->is_reel ?? false)): ?>
                                 <?php 
                                 // Normalize attachments to URLs
                                 $imageUrls = [];
@@ -283,34 +284,46 @@ $navHasPhoto = !empty($currentUser->profile_photo_path);
                                 <?php if (count($imageUrls) === 0): ?>
                                     <!-- No valid image URLs -->
                                 <?php elseif (count($imageUrls) === 1): ?>
-                                    <div class="photo-collage single-photo cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>' data-index="0">
-                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-auto rounded-xl object-cover max-h-[500px]">
+                                    <div class="photo-collage cursor-pointer <?= !empty($videoAttachments) ? 'mt-2' : 'mt-3' ?> mb-4 rounded-xl overflow-hidden" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>' data-index="0" style="max-height: 450px;">
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-auto object-cover" style="max-height: 450px;">
                                     </div>
                                 <?php elseif (count($imageUrls) === 2): ?>
-                                    <div class="photo-collage two-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>'>
-                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-64 object-cover" data-index="0">
-                                        <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-64 object-cover" data-index="1">
+                                    <div class="photo-collage grid grid-cols-2 gap-2 cursor-pointer <?= !empty($videoAttachments) ? 'mt-2' : 'mt-3' ?> mb-4 rounded-xl overflow-hidden" 
+                                         data-post-id="<?= h($post->id) ?>" 
+                                         data-images='<?= h($imageUrlsJson) ?>'
+                                         style="max-height: 350px;">
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="0">
+                                        <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="1">
                                     </div>
                                 <?php elseif (count($imageUrls) === 3): ?>
-                                    <div class="photo-collage three-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>'>
-                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2" data-index="0">
-                                        <div class="grid grid-rows-2 gap-2">
+                                    <div class="photo-collage grid grid-cols-2 gap-2 cursor-pointer <?= !empty($videoAttachments) ? 'mt-2' : 'mt-3' ?> mb-4 rounded-xl overflow-hidden" 
+                                         data-post-id="<?= h($post->id) ?>" 
+                                         data-images='<?= h($imageUrlsJson) ?>'
+                                         style="max-height: 350px;">
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="0">
+                                        <div class="relative overflow-hidden">
                                             <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="1">
-                                            <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="2">
+                                            <div class="absolute inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center pointer-events-none">
+                                                <span class="text-white text-4xl font-bold">+1</span>
+                                            </div>
                                         </div>
                                     </div>
                                 <?php elseif (count($imageUrls) >= 4): ?>
-                                    <!-- 4+ photos: show 3 with +N overlay -->
-                                    <div class="photo-collage multi-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer mt-3 mb-4" data-post-id="<?= h($post->id) ?>" data-images='<?= h($imageUrlsJson) ?>'>
-                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover row-span-2" data-index="0">
-                                        <div class="grid grid-rows-2 gap-2">
-                                            <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="1">
-                                            <div class="relative">
-                                                <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="2">
-                                                <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center pointer-events-none">
-                                                    <span class="text-white text-3xl font-bold">+<?= count($imageUrls) - 3 ?></span>
+                                    <!-- 4+ images: 2x2 grid with overlay on bottom-right -->
+                                    <div class="photo-collage grid grid-cols-2 grid-rows-2 gap-2 cursor-pointer <?= !empty($videoAttachments) ? 'mt-2' : 'mt-3' ?> mb-4 rounded-xl overflow-hidden" 
+                                         data-post-id="<?= h($post->id) ?>" 
+                                         data-images='<?= h($imageUrlsJson) ?>'
+                                         style="max-height: 400px;">
+                                        <img src="<?= h($imageUrls[0]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="0">
+                                        <img src="<?= h($imageUrls[1]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="1">
+                                        <img src="<?= h($imageUrls[2]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="2">
+                                        <div class="relative overflow-hidden">
+                                            <img src="<?= h($imageUrls[3]) ?>" alt="Post image" class="w-full h-full object-cover" data-index="3">
+                                            <?php if (count($imageUrls) > 4): ?>
+                                                <div class="absolute inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center pointer-events-none">
+                                                    <span class="text-white text-4xl font-bold">+<?= count($imageUrls) - 4 ?></span>
                                                 </div>
-                                            </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 <?php endif; ?>
@@ -494,6 +507,11 @@ document.addEventListener('click', function(e) {
 <script src="/js/middle.js"></script>
 <script src="/js/search.js"></script>
 <script src="/js/dashboard.js"></script>
+<script src="/js/reactions.js"></script>
+<script src="/js/comments.js"></script>
+<script src="/js/composer-modal.js"></script>
+<script src="/js/gallery.js"></script>
+<script src="/js/notifications.js"></script>
 <script>
 // Initialize middle.js for post interactions on search results page
 if (window.initializeMiddleColumn) {

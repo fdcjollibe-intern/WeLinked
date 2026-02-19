@@ -19,45 +19,53 @@
   }
 
   // Create photo collage for posts
-  function createPhotoCollage(images, postId) {
+  function createPhotoCollage(images, postId, hasVideo) {
     if (!images || images.length === 0) return '';
     
     const total = images.length;
+    const topMargin = hasVideo ? 'mt-2' : 'mt-3';
     let html = '';
 
     if (total === 1) {
-      // Single photo: full width
-      html = `<div class="photo-collage single-photo cursor-pointer" data-images='${JSON.stringify(images)}' data-index="0">
-        <img src="${images[0]}" alt="Photo" class="w-full h-auto rounded-xl object-cover max-h-[500px]">
+      // Single photo
+      html = `<div class="photo-collage cursor-pointer ${topMargin} mb-4 rounded-xl overflow-hidden" data-images='${JSON.stringify(images)}' data-index="0" style="max-height: 450px;">
+        <img src="${images[0]}" alt="Post image" class="w-full h-auto object-cover" style="max-height: 450px;">
       </div>`;
     } else if (total === 2) {
-      // Two photos: side by side
-      html = `<div class="photo-collage two-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer" data-images='${JSON.stringify(images)}'>
-        <img src="${images[0]}" alt="Photo 1" class="w-full h-64 object-cover" data-index="0">
-        <img src="${images[1]}" alt="Photo 2" class="w-full h-64 object-cover" data-index="1">
+      // Two photos
+      html = `<div class="photo-collage grid grid-cols-2 gap-2 cursor-pointer ${topMargin} mb-4 rounded-xl overflow-hidden" data-images='${JSON.stringify(images)}' style="max-height: 350px;">
+        <img src="${images[0]}" alt="Post image" class="w-full h-full object-cover" data-index="0">
+        <img src="${images[1]}" alt="Post image" class="w-full h-full object-cover" data-index="1">
       </div>`;
     } else if (total === 3) {
-      // Three photos: 1 large left, 2 stacked right
-      html = `<div class="photo-collage three-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer" data-images='${JSON.stringify(images)}'>
-        <img src="${images[0]}" alt="Photo 1" class="w-full h-full object-cover row-span-2" data-index="0">
-        <div class="grid grid-rows-2 gap-2">
-          <img src="${images[1]}" alt="Photo 2" class="w-full h-full object-cover" data-index="1">
-          <img src="${images[2]}" alt="Photo 3" class="w-full h-full object-cover" data-index="2">
+      // Three photos: show 2 with +1 overlay on second
+      html = `<div class="photo-collage grid grid-cols-2 gap-2 cursor-pointer ${topMargin} mb-4 rounded-xl overflow-hidden" data-images='${JSON.stringify(images)}' style="max-height: 350px;">
+        <img src="${images[0]}" alt="Post image" class="w-full h-full object-cover" data-index="0">
+        <div class="relative overflow-hidden">
+          <img src="${images[1]}" alt="Post image" class="w-full h-full object-cover" data-index="1">
+          <div class="absolute inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center pointer-events-none">
+            <span class="text-white text-4xl font-bold">+1</span>
+          </div>
         </div>
       </div>`;
     } else {
-      // 4+ photos: show first 3, with 3rd having "+N" overlay
-      const remaining = total - 3;
-      html = `<div class="photo-collage multi-photos grid grid-cols-2 gap-2 rounded-xl overflow-hidden cursor-pointer" data-images='${JSON.stringify(images)}'>
-        <img src="${images[0]}" alt="Photo 1" class="w-full h-full object-cover row-span-2" data-index="0">
-        <div class="grid grid-rows-2 gap-2">
-          <img src="${images[1]}" alt="Photo 2" class="w-full h-full object-cover" data-index="1">
-          <div class="relative">
-            <img src="${images[2]}" alt="Photo 3" class="w-full h-full object-cover" data-index="2">
-            <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-              <span class="text-white text-3xl font-bold">+${remaining}</span>
-            </div>
-          </div>
+      // 4+ photos: 2x2 grid with overlay on bottom-right
+      const remaining = total - 4;
+      html = `<div class="photo-collage grid grid-cols-2 grid-rows-2 gap-2 cursor-pointer ${topMargin} mb-4 rounded-xl overflow-hidden" data-images='${JSON.stringify(images)}' style="max-height: 400px;">
+        <img src="${images[0]}" alt="Post image" class="w-full h-full object-cover" data-index="0">
+        <img src="${images[1]}" alt="Post image" class="w-full h-full object-cover" data-index="1">
+        <img src="${images[2]}" alt="Post image" class="w-full h-full object-cover" data-index="2">
+        <div class="relative overflow-hidden">
+          <img src="${images[3]}" alt="Post image" class="w-full h-full object-cover" data-index="3">`;
+      
+      if (remaining > 0) {
+        html += `
+          <div class="absolute inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center pointer-events-none">
+            <span class="text-white text-4xl font-bold">+${remaining}</span>
+          </div>`;
+      }
+      
+      html += `
         </div>
       </div>`;
     }
@@ -100,6 +108,8 @@
       modal = createPhotoViewerModal();
     }
 
+    // Store images in modal dataset for keyboard navigation
+    modal.dataset.allImages = JSON.stringify(images);
     let currentIndex = startIndex || 0;
     
     const img = document.getElementById('photo-viewer-img');
@@ -108,48 +118,65 @@
     const closeBtn = document.getElementById('close-photo-viewer');
 
     function updatePhoto() {
-      img.src = images[currentIndex];
+      // Get images from modal dataset to ensure consistency
+      const allImages = JSON.parse(modal.dataset.allImages || '[]');
+      img.src = allImages[currentIndex];
       prevBtn.style.display = currentIndex > 0 ? 'block' : 'none';
-      nextBtn.style.display = currentIndex < images.length - 1 ? 'block' : 'none';
+      nextBtn.style.display = currentIndex < allImages.length - 1 ? 'block' : 'none';
     }
 
     updatePhoto();
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
-    prevBtn.onclick = () => {
+    // Remove old event listeners by cloning elements
+    const newPrevBtn = prevBtn.cloneNode(true);
+    const newNextBtn = nextBtn.cloneNode(true);
+    const newCloseBtn = closeBtn.cloneNode(true);
+    prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
+    nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
+    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+
+    newPrevBtn.onclick = () => {
       if (currentIndex > 0) {
         currentIndex--;
         updatePhoto();
       }
     };
 
-    nextBtn.onclick = () => {
-      if (currentIndex < images.length - 1) {
+    newNextBtn.onclick = () => {
+      const allImages = JSON.parse(modal.dataset.allImages || '[]');
+      if (currentIndex < allImages.length - 1) {
         currentIndex++;
         updatePhoto();
       }
     };
 
-    closeBtn.onclick = () => {
+    const closeModal = () => {
       modal.classList.add('hidden');
       modal.classList.remove('flex');
+      // Remove keyboard listener when closing
+      document.removeEventListener('keydown', handleKey);
     };
+
+    newCloseBtn.onclick = closeModal;
 
     modal.onclick = (e) => {
       if (e.target === modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        closeModal();
       }
     };
 
     // Keyboard navigation
     const handleKey = (e) => {
       if (modal.classList.contains('hidden')) return;
-      if (e.key === 'ArrowLeft') prevBtn.click();
-      if (e.key === 'ArrowRight') nextBtn.click();
-      if (e.key === 'Escape') closeBtn.click();
+      if (e.key === 'ArrowLeft') newPrevBtn.click();
+      if (e.key === 'ArrowRight') newNextBtn.click();
+      if (e.key === 'Escape') newCloseBtn.click();
     };
+    
+    // Remove any existing keyboard listeners before adding new one
+    document.removeEventListener('keydown', handleKey);
     document.addEventListener('keydown', handleKey);
   }
 

@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Controller\AppController;
+use App\Service\RedisNotificationService;
 use Cake\Http\Exception\BadRequestException;
 
 class DashboardReactionsController extends AppController
@@ -269,7 +270,30 @@ class DashboardReactionsController extends AppController
                 'message' => ($actor ? $actor->username : 'Someone') . ' reacted ' . $reactionEmoji . ' to ' . $targetDescription,
                 'is_read' => false,
             ]);
-            $notificationsTable->save($notification);
+            
+            if ($notificationsTable->save($notification)) {
+                // Publish to Redis for real-time WebSocket delivery
+                try {
+                    $usersTable = $this->fetchTable('Users');
+                    $redis = new RedisNotificationService();
+                    $unreadCount = $notificationsTable->getUnreadCount($ownerId);
+                    $redis->publishNewNotification($ownerId, [
+                        'id' => $notification->id,
+                        'type' => $notification->type,
+                        'message' => $notification->message,
+                        'actor' => [
+                            'id' => $actorId,
+                            'username' => $actor ? $actor->username : null
+                        ],
+                        'target_type' => $targetType,
+                        'target_id' => $targetId,
+                        'created_at' => $notification->created_at ? $notification->created_at->format('c') : date('c')
+                    ]);
+                    $redis->publishUnreadCount($ownerId, $unreadCount);
+                } catch (\Exception $e) {
+                    $this->log('Redis publish error: ' . $e->getMessage(), 'warning');
+                }
+            }
         } catch (\Exception $e) {
             $this->log('Error creating reaction notification: ' . $e->getMessage(), 'error');
         }

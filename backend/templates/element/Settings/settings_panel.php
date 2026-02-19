@@ -84,6 +84,32 @@
                     'url' => ['controller' => 'Settings', 'action' => 'updateAccount'],
                     'class' => 'space-y-4'
                 ]) ?>
+                    <!-- Profile Photo (Centered at Top) -->
+                    <div class="flex flex-col items-center justify-center py-4 border-b border-gray-100 mb-4">
+                        <?php if (!empty($user->profile_photo_path)): ?>
+                        <img id="profile-photo-preview" 
+                             src="<?= h($user->profile_photo_path) ?>" 
+                             alt="Profile Photo" 
+                             class="w-32 h-32 rounded-full object-cover border-4 border-gray-200 shadow-md mb-4">
+                        <?php else: ?>
+                        <div id="profile-photo-preview" class="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 border-4 border-gray-200 shadow-md mb-4">
+                            <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <?php endif; ?>
+                        <input type="file" 
+                               id="profile-photo-input" 
+                               accept="image/*" 
+                               class="hidden">
+                        <button type="button" 
+                                id="upload-photo-btn"
+                                class="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm shadow-sm hover:shadow-md">
+                            Change Photo
+                        </button>
+                        <p class="text-xs text-gray-500 mt-2">JPG, PNG, GIF or WEBP (Max 10MB)</p>
+                    </div>
+                    
                     <div>
                         <?= $this->Form->control('username', [
                             'label' => ['text' => 'Username', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
@@ -115,50 +141,49 @@
                         <p class="text-xs text-gray-500 mt-1">Email address cannot be changed for security reasons</p>
                     </div>
                     
-                    <div>
-                        <?= $this->Form->control('gender', [
-                            'type' => 'select',
-                            'label' => ['text' => 'Gender', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
-                            'class' => 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors',
-                            'options' => [
-                                'Prefer not to say' => 'Prefer not to say',
-                                'Male' => 'Male',
-                                'Female' => 'Female'
-                            ],
-                            'value' => h($user->gender ?? 'Prefer not to say'),
-                            'empty' => false
-                        ]) ?>
-                        <p class="text-xs text-gray-500 mt-1">Your gender (optional)</p>
+                    <!-- Birthday and Gender in one row -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <?= $this->Form->control('birthdate', [
+                                'type' => 'date',
+                                'label' => ['text' => 'Birthday', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
+                                'class' => 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors',
+                                'value' => $user->birthdate ? $user->birthdate->format('Y-m-d') : '',
+                                'required' => false
+                            ]) ?>
+                            <p class="text-xs text-gray-500 mt-1">Your date of birth (optional)</p>
+                        </div>
+                        
+                        <div>
+                            <?= $this->Form->control('gender', [
+                                'type' => 'select',
+                                'label' => ['text' => 'Gender', 'class' => 'block text-sm font-medium text-gray-700 mb-1'],
+                                'class' => 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors',
+                                'options' => [
+                                    'Prefer not to say' => 'Prefer not to say',
+                                    'Male' => 'Male',
+                                    'Female' => 'Female'
+                                ],
+                                'value' => h($user->gender ?? 'Prefer not to say'),
+                                'empty' => false
+                            ]) ?>
+                            <p class="text-xs text-gray-500 mt-1">Your gender (optional)</p>
+                        </div>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Profile Photo</label>
-                        <div class="flex items-center gap-4">
-                            <?php if (!empty($user->profile_photo_path)): ?>
-                            <img id="profile-photo-preview" 
-                                 src="<?= h($user->profile_photo_path) ?>" 
-                                 alt="Profile Photo" 
-                                 class="w-20 h-20 rounded-full object-cover border-2 border-gray-200">
-                            <?php else: ?>
-                            <div id="profile-photo-preview" class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 border-2 border-gray-200">
-                                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                </svg>
-                            </div>
-                            <?php endif; ?>
-                            <div class="flex-1">
-                                <input type="file" 
-                                       id="profile-photo-input" 
-                                       accept="image/*" 
-                                       class="hidden">
-                                <button type="button" 
-                                        id="upload-photo-btn"
-                                        class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors text-sm">
-                                    Choose Photo
-                                </button>
-                                <p class="text-xs text-gray-500 mt-1">JPG, PNG, GIF or WEBP (Max 10MB)</p>
-                            </div>
+                        <div class="flex items-center">
+                            <?= $this->Form->control('is_birthday_public', [
+                                'type' => 'checkbox',
+                                'label' => false,
+                                'class' => 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500',
+                                'checked' => $user->is_birthday_public ?? false
+                            ]) ?>
+                            <label for="is-birthday-public" class="ml-2 text-sm font-medium text-gray-700">
+                                Make my birthday publicly visible
+                            </label>
                         </div>
+                        <p class="text-xs text-gray-500 mt-1">If enabled, your birthday will be visible to other users in the birthday list</p>
                     </div>
                     
                     <div class="flex justify-end pt-2">
@@ -334,48 +359,34 @@
             <div class="bg-gray-50 rounded-xl border border-dashed border-gray-200 p-4 min-h-[320px] flex items-center justify-center overflow-hidden">
                 <img id="cropper-source" src="" alt="Crop preview" class="max-h-[70vh]">
             </div>
-            <div class="flex flex-wrap gap-2" id="cropper-controls">
-                <button type="button" data-crop-action="zoom-in" class="px-2 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 group relative" title="Zoom In">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"/>
-                    </svg>
-                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Zoom In</span>
+            <div class="flex flex-wrap gap-2 justify-center" id="cropper-controls">
+                <button type="button" data-crop-action="zoom-in" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Zoom In">
+                    <span class="material-symbols-outlined" style="font-size:20px">zoom_in</span>
+                    Zoom In
                 </button>
-                <button type="button" data-crop-action="zoom-out" class="px-2 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 group relative" title="Zoom Out">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM7 10h6"/>
-                    </svg>
-                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Zoom Out</span>
+                <button type="button" data-crop-action="zoom-out" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Zoom Out">
+                    <span class="material-symbols-outlined" style="font-size:20px">zoom_out</span>
+                    Zoom Out
                 </button>
-                <button type="button" data-crop-action="rotate-left" class="px-2 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 group relative" title="Rotate Left">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0H7.14M2.985 14.652a8.001 8.001 0 0115.682-4.482m0 0H9.88"/>
-                    </svg>
-                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Rotate Left</span>
+                <button type="button" data-crop-action="rotate-left" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Rotate Left">
+                    <span class="material-symbols-outlined" style="font-size:20px">rotate_left</span>
+                    Rotate Left
                 </button>
-                <button type="button" data-crop-action="rotate-right" class="px-2 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 group relative" title="Rotate Right">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.977 14.652a8.001 8.001 0 015.682 4.482m0 0H9.88m12.02-4.482v4.992m0 0H16.06a8.001 8.001 0 01-5.682-4.482m0 0H14.12"/>
-                    </svg>
-                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Rotate Right</span>
+                <button type="button" data-crop-action="rotate-right" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Rotate Right">
+                    <span class="material-symbols-outlined" style="font-size:20px">rotate_right</span>
+                    Rotate Right
                 </button>
-                <button type="button" data-crop-action="flip-horizontal" class="px-2 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 group relative" title="Flip Horizontal">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0H3m4 0l8-3m0 0h4m-4 0l-8 3m0 0v12M19 3v12"/>
-                    </svg>
-                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Flip Horizontal</span>
+                <button type="button" data-crop-action="flip-horizontal" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Flip Horizontal">
+                    <span class="material-symbols-outlined" style="font-size:20px">flip</span>
+                    Flip H
                 </button>
-                <button type="button" data-crop-action="flip-vertical" class="px-2 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 group relative" title="Flip Vertical">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16v4H4V7zm0 6h16v4H4v-4z"/>
-                    </svg>
-                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Flip Vertical</span>
+                <button type="button" data-crop-action="flip-vertical" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Flip Vertical">
+                    <span class="material-symbols-outlined" style="font-size:20px;transform:rotate(90deg)">flip</span>
+                    Flip V
                 </button>
-                <button type="button" data-crop-action="reset" class="px-2 py-2 rounded-lg border border-gray-200 hover:bg-gray-100 group relative" title="Reset">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
-                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Reset</span>
+                <button type="button" data-crop-action="reset" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-red-500 transition-all text-sm font-medium flex items-center gap-1" title="Reset">
+                    <span class="material-symbols-outlined" style="font-size:20px">restart_alt</span>
+                    Reset
                 </button>
             </div>
         </div>
@@ -498,10 +509,19 @@
 
     function showToast(message, variant = 'success') {
         const toast = document.createElement('div');
-        toast.className = `fixed top-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium flex items-center gap-3 ${variant === 'success' ? 'bg-white border-green-200 text-gray-900' : 'bg-white border-red-200 text-gray-900'}`;
-        toast.innerHTML = `<span class="w-2 h-2 rounded-full ${variant === 'success' ? 'bg-green-500' : 'bg-red-500'}"></span><span>${message}</span>`;
+        toast.className = `fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 px-8 py-6 rounded-xl shadow-xl bg-white flex flex-col items-center gap-3`;
+        const iconColor = variant === 'success' ? 'bg-green-500' : 'bg-red-500';
+        const iconSvg = variant === 'success' 
+            ? '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>'
+            : '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>';
+        toast.innerHTML = `
+            <div class="w-16 h-16 rounded-full ${iconColor} flex items-center justify-center">
+                ${iconSvg}
+            </div>
+            <span class="text-gray-900 font-bold text-base">${message}</span>
+        `;
         document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3200);
+        setTimeout(() => toast.remove(), 2000);
     }
 
     function dispatchUserUpdate(detail) {

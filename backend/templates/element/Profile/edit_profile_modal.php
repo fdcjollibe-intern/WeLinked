@@ -202,7 +202,7 @@
             .then(data => {
                 if (data.success) {
                     // Show success message
-                    showToast('Profile updated successfully!', 'success');
+                    showToast('Changes Updated Successfully!', 'success');
                     
                     // Check if username changed - redirect to new profile URL
                     if (data.user && data.user.username && originalUsername !== data.user.username) {

@@ -49,7 +49,25 @@ class SettingsController extends AppController
             $data['gender'] = $this->request->getData('gender');
         }
         
+        // Add birthdate if provided (allow empty string to clear the field)
+        $birthdate = $this->request->getData('birthdate');
+        if ($birthdate !== null) {
+            $data['birthdate'] = $birthdate === '' ? null : $birthdate;
+        }
+        
+        // Add birthday visibility (checkbox returns '1' if checked, null if unchecked)
+        // Always set this field, even if unchecked (which will be false)
+        $data['is_birthday_public'] = $this->request->getData('is_birthday_public') ? true : false;
+        
+        // Debug log
+        $this->log('Update account data: ' . json_encode($data), 'debug');
+        
         $user = $usersTable->patchEntity($user, $data);
+        
+        // Log any validation errors
+        if ($user->hasErrors()) {
+            $this->log('User entity has errors: ' . json_encode($user->getErrors()), 'error');
+        }
         
         if ($usersTable->save($user)) {
             if (isset($this->Authentication)) {
@@ -59,18 +77,28 @@ class SettingsController extends AppController
             return $this->response->withType('application/json')
                 ->withStringBody(json_encode([
                     'success' => true,
-                    'message' => 'Profile updated successfully',
+                    'message' => 'Changes Updated Successfully',
                     'user' => [
                         'username' => $user->username,
                         'full_name' => $user->full_name,
                         'gender' => $user->gender,
+                        'birthdate' => $user->birthdate ? $user->birthdate->format('Y-m-d') : null,
+                        'is_birthday_public' => $user->is_birthday_public,
                     ],
                 ]));
         }
         
+        // Log save errors
+        $errors = $user->getErrors();
+        $this->log('Failed to save user. Errors: ' . json_encode($errors), 'error');
+        
         return $this->response->withType('application/json')
             ->withStatus(400)
-            ->withStringBody(json_encode(['success' => false, 'message' => 'Failed to update profile']));
+            ->withStringBody(json_encode([
+                'success' => false, 
+                'message' => 'Failed to update profile',
+                'errors' => $errors
+            ]));
     }
     
     public function updatePassword()

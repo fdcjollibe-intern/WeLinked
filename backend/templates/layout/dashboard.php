@@ -1,19 +1,88 @@
 <?php
 /**
- * Dashboard - Modern Social Feed Design
+ * Dashboard Layout - Used for pages that need the three-column dashboard structure
  */
 ?>
-<?= $this->Html->css('dashboard') ?>
-<script>
-    window.csrfToken = '<?= $this->request->getAttribute('csrfToken') ?>';
-    window.currentUserId = <?= json_encode($currentUser->id ?? null) ?>;
-    window.currentUserPhoto = <?= json_encode($currentUser->profile_photo_path ?? '') ?>;
-    window.currentUserInitial = <?= json_encode(strtoupper(substr($currentUser->username ?? 'U', 0, 1))) ?>;
-</script>
+<!DOCTYPE html>
+<html>
+<head>
+    <?= $this->Html->charset() ?>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><?= $this->fetch('title', 'WeLinked') ?></title>
+    <link rel="icon" href="/favicon.ico" />
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    
+    <!-- Vue.js 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <style>
+        html,body{height:100%;margin:0;padding:0}
+        body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;background:#fafafa}
+        a {text-decoration: none}
+        
+        /* Birthday Confetti Animation */
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .animate-confetti {
+            animation: confetti-fall var(--duration, 3s) linear var(--delay, 0s) infinite;
+        }
+        
+        /* Scale In Animation */
+        @keyframes scale-in {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-scale-in {
+            animation: scale-in 0.3s ease-out;
+        }
+        
+        /* Float Animation */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-float {
+            animation: float 2s ease-in-out infinite;
+        }
+        
+        /* Birthday Gradient Background */
+        .birthday-gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Birthday Glow Effect */
+        .birthday-glow {
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+        .birthday-glow:hover {
+            box-shadow: 0 0 30px rgba(102, 126, 234, 0.7);
+        }
+    </style>
+    
+    <?= $this->Html->css('dashboard') ?>
+    <?= $this->fetch('meta') ?>
+    <?= $this->fetch('css') ?>
+    <?= $this->fetch('script') ?>
+</head>
+<body>
+    <?= $this->Flash->render() ?>
+    
+    <script>
+        window.csrfToken = '<?= $this->request->getAttribute('csrfToken') ?>';
+        window.currentUserId = <?= json_encode($currentUser->id ?? null) ?>;
+        window.currentUserPhoto = <?= json_encode($currentUser->profile_photo_path ?? '') ?>;
+        window.currentUserInitial = <?= json_encode(strtoupper(substr($currentUser->username ?? 'U', 0, 1))) ?>;
+    </script>
 
-<!-- Desktop / large view navbar -->
-<?php $navHasPhoto = !empty($currentUser->profile_photo_path); ?>
-<?php if (empty($isMobileView)): ?>
+    <!-- Desktop / large view navbar -->
+    <?php $navHasPhoto = !empty($currentUser->profile_photo_path); ?>
+    <?php if (empty($isMobileView)): ?>
 <nav class="bg-white shadow-sm fixed top-0 left-0 right-0 z-50 h-16">
     <div class="flex items-center justify-between px-6 h-full max-w-screen-2xl mx-auto">
         <!-- Left: Logo + Search -->
@@ -124,6 +193,7 @@
 
         <!-- Center Content Area -->
         <main id="middle-component" class="flex-1 min-w-0 px-4 lg:px-8">
+            <?= $this->fetch('content') ?>
         </main>
 
         <!-- Right Sidebar -->
@@ -132,11 +202,6 @@
         </aside>
     </div>
 </div>
-
-<?= $this->Html->script('dashboard') ?>
-<?= $this->Html->script('middle') ?>
-<?= $this->Html->script('reactions') ?>
-<?= $this->Html->script('gallery') ?>
 
 <?php if (!empty($isMobileView)): ?>
 <!-- Mobile bottom navigation -->
@@ -191,13 +256,18 @@
 </nav>
 <?php endif; ?>
 
-<!-- Birthday Celebration Modal -->
+<!-- Confetti Overlay (only shown during first and second modals) -->
+<div id="confettiOverlay" class="hidden pointer-events-none fixed inset-0 z-50 overflow-hidden">
+    <!-- Confetti pieces will be generated dynamically -->
+</div>
+
+<!-- First Birthday Modal -->
 <div id="birthdayCelebrationModal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="animate-scale-in mx-4 w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
         <div class="animate-float mb-4 flex justify-center">
             <picture>
                 <source srcset="https://fonts.gstatic.com/s/e/notoemoji/latest/1f973/512.webp" type="image/webp">
-                <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f973/512.gif" alt="🥳" width="140" height="140">
+                <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f973/512.gif" alt="🥳" width="80" height="80">
             </picture>
         </div>
         <h2 class="mb-1 text-lg font-semibold text-[#3B82F6]">
@@ -215,13 +285,13 @@
     </div>
 </div>
 
-<!-- Birthday Messages Modal -->
+<!-- Second Birthday Modal -->
 <div id="birthdayMessagesModal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="animate-scale-in mx-4 w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
         <div class="animate-float mb-4 flex justify-center">
             <picture>
                 <source srcset="https://fonts.gstatic.com/s/e/notoemoji/latest/1f382/512.webp" type="image/webp">
-                <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f382/512.gif" alt="🎂" width="140" height="140">
+                <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f382/512.gif" alt="🎂" width="80" height="80">
             </picture>
         </div>
         <h2 class="mb-2 text-2xl font-black text-gray-900">
@@ -255,36 +325,35 @@
 <script src="/js/reactions.js"></script>
 <script src="/js/gallery.js"></script>
 <script src="/js/composer-modal.js"></script>
-
-<!-- Socket.io Client Library for Real-time WebSocket Notifications -->
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js" crossorigin="anonymous"></script>
-
-<!-- Verify Socket.io loaded -->
-<script>
-    if (typeof io !== 'undefined') {
-        console.log('%c✓ Socket.io v' + io.version + ' loaded successfully', 'color: #10B981; font-weight: bold;');
-    } else {
-        console.error('%c✗ Socket.io failed to load from CDN', 'color: #EF4444; font-weight: bold;');
-        console.error('Will fallback to polling mode for notifications');
-    }
-</script>
-
-<!-- WebSocket Configuration and Client -->
-<script>
-    // WebSocket server URL (change for production)
-    window.WEBSOCKET_URL = '<?= \Cake\Core\Configure::read('WebSocket.client_url', 'http://localhost:3000') ?>';
-    console.log('[Config] WebSocket URL:', window.WEBSOCKET_URL);
-</script>
-<script src="/js/websocket-client.js"></script>
-
-<!-- Notifications Manager (uses WebSocket with polling fallback) -->
 <script src="/js/notifications.js"></script>
-
 <script src="/js/post-composer.js"></script>
 <script src="/js/search.js"></script>
 
 <!-- Birthday Check Script -->
 <script>
+// Confetti colors
+const CONFETTI_COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe'];
+
+// Generate confetti pieces
+function generateConfetti() {
+    const overlay = document.getElementById('confettiOverlay');
+    if (!overlay) return;
+    
+    overlay.innerHTML = ''; // Clear existing confetti
+    
+    for (let i = 0; i < 30; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'animate-confetti absolute ' + (Math.random() > 0.5 ? 'rounded-full' : 'rounded-sm');
+        piece.style.left = Math.random() * 100 + '%';
+        piece.style.width = (6 + Math.random() * 6) + 'px';
+        piece.style.height = (6 + Math.random() * 6) + 'px';
+        piece.style.backgroundColor = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+        piece.style.setProperty('--duration', (2 + Math.random() * 3) + 's');
+        piece.style.setProperty('--delay', Math.random() * 3 + 's');
+        overlay.appendChild(piece);
+    }
+}
+
 // Check for birthday on dashboard load
 async function checkBirthday() {
     // Only check on actual /dashboard route, not when loading other sections
@@ -305,15 +374,19 @@ async function checkBirthday() {
             // Mark as shown for this session
             sessionStorage.setItem('birthdayShown', 'true');
             
-            // Show celebrate modal
-            document.getElementById('birthdayUserName').textContent = result.full_name;
+            // Generate and show confetti
+            generateConfetti();
+            document.getElementById('confettiOverlay').classList.remove('hidden');
+            
+            // Update first modal content
             const ordinal = getOrdinalSuffix(result.age);
-            document.getElementById('birthdayAgeText').textContent = ordinal;
+            document.getElementById('birthdayTitle').textContent = `Happy ${ordinal} Birthday`;
+            document.getElementById('birthdayUserName').textContent = result.full_name;
+            document.getElementById('birthdayAge').textContent = result.age;
             document.getElementById('birthdayCelebrationModal').classList.remove('hidden');
             
-            // If there are messages, show that modal next
+            // Store message count for second modal
             if (result.unread_count > 0) {
-                // Store message count to show after celebration closes
                 sessionStorage.setItem('birthdayMessageCount', result.unread_count);
             }
         }
@@ -341,6 +414,8 @@ function closeBirthdayCelebration() {
 
 function closeBirthdayMessages() {
     document.getElementById('birthdayMessagesModal').classList.add('hidden');
+    // Hide confetti when closing second modal
+    document.getElementById('confettiOverlay').classList.add('hidden');
 }
 
 function getOrdinalSuffix(num) {
@@ -365,3 +440,5 @@ if (document.readyState === 'loading') {
     checkBirthday();
 }
 </script>
+</body>
+</html>

@@ -42,11 +42,10 @@
                 </a>
             </li>
             <li>
-                <a href="#" data-nav="messages" class="nav-link group relative flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full font-medium">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                    <span>Messages</span>
-                    <span class="ml-auto bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">6</span>
-                    <span class="absolute right-0 -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">Coming Soon</span>
+                <a href="#" data-nav="birthday" class="nav-link flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full font-medium relative">
+                    <span class="material-symbols-outlined text-xl mr-3">cake</span>
+                    <span>Birthday</span>
+                    <span id="birthday-message-badge" class="hidden ml-auto bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">0</span>
                 </a>
             </li>
             <li>
@@ -74,7 +73,7 @@
 </div>
 
 <!-- Logout Confirmation Modal -->
-<div id="logout-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+<div id="logout-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] px-4">
     <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl transform transition-all">
         <h3 class="text-xl font-semibold text-center mb-2">Confirm Logout</h3>
         <p class="text-gray-600 text-center mb-6">Are you sure you want to log out?</p>
@@ -199,6 +198,22 @@
         });
         }
 
+        // Load birthday message count for badge
+        function loadBirthdayMessageCount() {
+            fetch('/birthday/get-message-count')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.count > 0) {
+                        const badge = document.getElementById('birthday-message-badge');
+                        if (badge) {
+                            badge.textContent = data.count;
+                            badge.classList.remove('hidden');
+                        }
+                    }
+                })
+                .catch(err => console.error('Failed to load birthday message count:', err));
+        }
+
         // Robust loader that requests fragments and runs scripts
         function loadMiddleColumn(url) {
         const middleColumn = document.getElementById('middle-component');
@@ -220,6 +235,9 @@
         
         // Make loadMiddleColumn globally accessible
         window.loadMiddleColumn = loadMiddleColumn;
+        
+        // Make birthday message badge refresh globally accessible
+        window.refreshBirthdayMessageBadge = loadBirthdayMessageCount;
         
         // Helper to check unsaved changes and optionally show modal
         async function checkUnsavedAndNavigate(navigateCallback) {
@@ -265,7 +283,9 @@
                 } else if (action === 'friends') {
                     loadMiddleColumn('/friends');
                     history.pushState({}, '', '/friends');
-                } else if (action === 'messages') {
+                } else if (action === 'birthday') {
+                    loadMiddleColumn('/birthday');
+                    history.pushState({}, '', '/birthday');
                 }
             });
             return;
@@ -369,6 +389,8 @@
             activeNav = 'friends';
         } else if (currentPath.includes('/search')) {
             activeNav = 'search';
+        } else if (currentPath.includes('/birthday')) {
+            activeNav = 'birthday';
         }
 
             updateNavigationState(activeNav);
@@ -393,6 +415,9 @@
 
         // Immediately hydrate nav + sidebar with authoritative data from backend
         hydrateCurrentUser();
+        
+        // Load birthday message count for badge
+        loadBirthdayMessageCount();
 
         // When a fragment loads, allow it to initialize any handlers by listening to event
         document.getElementById('middle-component')?.addEventListener('fragment:loaded', () => {

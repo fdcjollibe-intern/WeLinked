@@ -921,13 +921,36 @@
         html += '<p class="text-gray-700 mb-4">' + escapeHtml(body) + '</p>';
       }
 
-      const urls = (post.attachments && post.attachments.length ? post.attachments : uploadedFiles || []).map(function (att) {
-        if (typeof att === 'string') return att;
-        return att.url || '';
-      }).filter(Boolean);
+      // Separate videos and images
+      const allAttachments = (post.attachments && post.attachments.length ? post.attachments : uploadedFiles || []);
+      const videoAttachments = [];
+      const imageAttachments = [];
+      
+      allAttachments.forEach(function(att) {
+        const url = typeof att === 'string' ? att : (att.url || '');
+        const resourceType = att.resource_type || '';
+        const isVideo = resourceType === 'video' || url.match(/\.(mp4|webm|mov|avi|mkv)$/i);
+        
+        if (isVideo) {
+          videoAttachments.push(url);
+        } else if (url) {
+          imageAttachments.push(url);
+        }
+      });
 
-      if (urls.length && window.createPhotoCollage) {
-        html += window.createPhotoCollage(urls, post.id || Date.now());
+      // Render videos
+      if (videoAttachments.length > 0) {
+        videoAttachments.forEach(function(videoUrl) {
+          html += '<div class="post-video mt-3 mb-3 rounded-xl bg-black flex items-center justify-center overflow-hidden" style="max-height: 500px;">';
+          html += '<video class="w-full h-auto object-contain" style="max-height: 500px;" src="' + escapeHtml(videoUrl) + '" controls preload="metadata" playsinline>';
+          html += 'Your browser does not support the video tag.';
+          html += '</video></div>';
+        });
+      }
+
+      // Render images using collage
+      if (imageAttachments.length && window.createPhotoCollage) {
+        html += window.createPhotoCollage(imageAttachments, post.id || Date.now(), videoAttachments.length > 0);
       }
 
       html += `
@@ -977,11 +1000,19 @@
       const postsList = document.getElementById('posts-list');
       if(!postsList) return;
       let loading = false;
-      let limit = 20;
+      let limit = 8;
+      let hasMorePosts = true;
+      let currentObserver = null;
+      
       function loadMore(){
-        if(loading) return; loading=true;
+        if(loading || !hasMorePosts) return; 
+        loading = true;
         const start = parseInt(postsList.getAttribute('data-start')||0,10) + postsList.querySelectorAll('.post').length;
         const feed = postsList.getAttribute('data-feed') || 'friends';
+        
+        console.log('[Infinite Scroll] Loading more posts...', { start, feed, currentPosts: postsList.querySelectorAll('.post').length });
+        console.log('[Infinite Scroll] Feed type being requested:', feed);
+        
         fetch('/dashboard/middle-column?start=' + start + '&feed=' + encodeURIComponent(feed))
           .then(r => r.text())
           .then(html => {
@@ -989,22 +1020,80 @@
             const tmp = document.createElement('div'); tmp.innerHTML = html;
             const newList = tmp.querySelector('#posts-list');
             if(!newList) { loading=false; return; }
+            
+            // Verify the feed type in the loaded content
+            const loadedFeed = newList.getAttribute('data-feed');
+            console.log('[Infinite Scroll] Loaded content has feed type:', loadedFeed);
+            if(loadedFeed !== feed) {
+              console.warn('[Infinite Scroll] WARNING: Feed mismatch! Expected:', feed, 'Got:', loadedFeed);
+            }
+            
             const children = newList.children;
             let appended = 0;
             Array.from(children).forEach(ch => { postsList.appendChild(ch); appended++; });
+            
+            console.log('[Infinite Scroll] Loaded', appended, 'new posts');
+            
             // update start
             const newStart = start + appended;
             postsList.setAttribute('data-start', newStart);
             // if less than limit returned, stop further loads
-            if(appended < limit){ window.removeEventListener('scroll', onScroll); }
+            if(appended < limit){ 
+              hasMorePosts = false;
+              console.log('[Infinite Scroll] No more posts to load');
+            } else {
+              // Set up observer for the new 5th post from end
+              setupScrollMarker();
+            }
             loading=false;
-          }).catch(()=>{ loading=false; });
+          }).catch((err)=>{ 
+            console.error('[Infinite Scroll] Load failed:', err);
+            loading=false; 
+          });
       }
-      function onScroll(){
-        const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 800;
-        if(nearBottom) loadMore();
+      
+      function setupScrollMarker(){
+        // Clean up previous observer
+        if(currentObserver) {
+          currentObserver.disconnect();
+          currentObserver = null;
+        }
+        
+        const posts = postsList.querySelectorAll('.post');
+        if(posts.length < 5) return;
+        
+        // Target the 5th post from the end as our trigger marker
+        const marker = posts[posts.length - 5];
+        if(!marker) return;
+        
+        // Use Intersection Observer with threshold to trigger only when marker is 50% visible
+        currentObserver = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            // Trigger when 50% of the marker element is visible AND scrolling down
+            if(entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+              console.log('[Infinite Scroll] Marker reached (5th from end)');
+              loadMore();
+            }
+          });
+        }, {
+          threshold: 0.5, // Trigger when 50% of the marker is visible
+          rootMargin: '0px' // No margin - must actually scroll to it
+        });
+        
+        currentObserver.observe(marker);
+        console.log('[Infinite Scroll] Marker set at post', posts.length - 5, 'of', posts.length);
       }
-      window.addEventListener('scroll', onScroll);
+      
+      // Initial setup
+      setupScrollMarker();
+      
+      // Fallback check for initial load if not enough content
+      setTimeout(() => {
+        if(document.body.offsetHeight <= window.innerHeight + 100 && hasMorePosts && !loading) {
+          console.log('[Infinite Scroll] Initial content too short, loading more...');
+          loadMore();
+        }
+      }, 500);
     })();
   }
 

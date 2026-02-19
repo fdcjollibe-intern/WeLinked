@@ -29,15 +29,9 @@
 
   // Update reaction button state based on user's reaction
   function updateButtonState(btn, reactionKey) {
-    console.log('[reactions.js] updateButtonState called:', { 
-      btn: btn, 
-      reactionKey: reactionKey,
-      isCommentBtn: btn?.classList.contains('comment-reaction-btn')
-    });
     const icon = ensureHeartIcon(btn);
     const label = btn.querySelector('.reaction-label');
     if (!label) {
-      console.log('[reactions.js] No reaction-label found in button!');
       return;
     }
     const emojiBadge = btn.querySelector('.reaction-emoji-active');
@@ -200,7 +194,6 @@
 
     // Prevent double-execution: check if request is already in progress
     if (btn.dataset.reactionPending === 'true') {
-      console.log('[reactions.js] Request already in progress, ignoring duplicate call');
       return;
     }
 
@@ -212,14 +205,6 @@
 
     // Optimistic UI update
     updateButtonState(btn, togglingOff ? '' : reactionKey);
-
-    console.log('[reactions.js] Performing reaction:', {
-      targetType,
-      targetId,
-      reactionKey,
-      currentReaction,
-      togglingOff
-    });
     
     fetch('/dashboard/posts/react', {
       method: 'POST',
@@ -235,24 +220,18 @@
       })
     })
     .then(async r => {
-      console.log('[reactions.js] Response status:', r.status);
-      console.log('[reactions.js] Response headers:', r.headers.get('content-type'));
-      
       // Get response text first to debug
       const text = await r.text();
-      console.log('[reactions.js] Response text:', text);
       
       // Try to parse as JSON
       try {
         return JSON.parse(text);
       } catch (parseError) {
-        console.error('[reactions.js] JSON parse failed:', parseError);
-        console.error('[reactions.js] Raw response:', text);
-        throw new Error('Server returned invalid JSON: ' + text.substring(0, 100));
+        console.error('[reactions.js] Server response error:', parseError.message);
+        throw new Error('Server returned invalid JSON');
       }
     })
     .then(json => {
-      console.log('[reactions.js] Response data:', json);
       if (json && json.success) {
         // Update button state with server response
         updateButtonState(btn, json.user_reaction || '');
@@ -308,14 +287,12 @@
 
   // Initialize reaction buttons on page load
   function initializeReactionButtons() {
-    console.log('[reactions.js] Initializing reaction buttons on page load');
     document.querySelectorAll('.post').forEach(post => {
       const btn = post.querySelector('.reaction-btn');
       if (!btn) return;
       
       const userReaction = btn.dataset.userReaction || '';
       if (userReaction) {
-        console.log('[reactions.js] Setting initial state for post', post.dataset.postId, ':', userReaction);
         updateButtonState(btn, userReaction);
       }
     });
@@ -370,7 +347,7 @@
       if (btn && picker.style.visibility === 'hidden') {
         // Check if already processed this event
         if (e._reactionProcessed) {
-          console.log('[reactions.js] Reaction event already processed, skipping');
+
           return;
         }
         e._reactionProcessed = true;

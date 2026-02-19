@@ -100,6 +100,10 @@ return function (RouteBuilder $routes): void {
         // Mentions API - Autocomplete for @mentions
         $builder->connect('/api/mentions/search', ['controller' => 'Mentions', 'action' => 'search']);
         
+        // Auth API - WebSocket token verification
+        $builder->connect('/api/auth/websocket-token', ['controller' => 'AuthApi', 'action' => 'generateWebSocketToken']);
+        $builder->connect('/api/auth/verify-token', ['controller' => 'AuthApi', 'action' => 'verifyToken']);
+        
         // Notifications API
         $builder->connect('/api/notifications', ['controller' => 'Notifications', 'action' => 'index']);
         $builder->connect('/api/notifications/unread-count', ['controller' => 'Notifications', 'action' => 'unreadCount']);
@@ -113,6 +117,22 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/api/friends/count', ['controller' => 'Friends', 'action' => 'count']);
         $builder->connect('/friends/follow', ['controller' => 'Friends', 'action' => 'follow']);
         $builder->connect('/friends/unfollow', ['controller' => 'Friends', 'action' => 'unfollow']);
+
+        // Birthdays API
+        $builder->connect('/birthdays', ['controller' => 'Birthdays', 'action' => 'index']);
+        $builder->connect('/birthdays/get-count', ['controller' => 'Birthdays', 'action' => 'getCount']);
+        $builder->connect('/birthday', ['controller' => 'Birthdays', 'action' => 'list']);
+        $builder->connect('/birthday/sent', ['controller' => 'Birthdays', 'action' => 'sent']);
+        $builder->connect('/birthday/messages', ['controller' => 'Birthdays', 'action' => 'messages']);
+        $builder->connect('/birthday/check-today', ['controller' => 'Birthdays', 'action' => 'checkToday']);
+        $builder->connect('/birthday/get-message-count', ['controller' => 'Birthdays', 'action' => 'getMessageCount']);
+        $builder->connect('/birthday/mark-as-read/{id}', ['controller' => 'Birthdays', 'action' => 'markAsRead'])
+            ->setPass(['id']);
+        $builder->connect('/birthday/send-message', ['controller' => 'Birthdays', 'action' => 'sendMessage']);
+        $builder->connect('/birthday/edit-message/{id}', ['controller' => 'Birthdays', 'action' => 'editMessage'])
+            ->setPass(['id']);
+        $builder->connect('/birthday/delete-message/{id}', ['controller' => 'Birthdays', 'action' => 'deleteMessage'])
+            ->setPass(['id']);
 
         // Search API
         $builder->connect('/search', ['controller' => 'Search', 'action' => 'index']);

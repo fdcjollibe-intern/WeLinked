@@ -39,7 +39,7 @@ class NotificationsController extends AppController
                     'type' => $notification->type,
                     'message' => $notification->message,
                     'is_read' => $notification->is_read,
-                    'created_at' => $notification->created_at->format('c'),
+                    'created_at' => $notification->created_at ? $notification->created_at->format('c') : null,
                     'actor' => $notification->actor ? [
                         'id' => $notification->actor->id,
                         'username' => $notification->actor->username,
@@ -64,11 +64,11 @@ class NotificationsController extends AppController
         }
     }
 
-    public function markAsRead($notificationId = null)
+    public function markAsRead($id = null)
     {
         $this->request->allowMethod(['post', 'put']);
         
-        if (!$notificationId) {
+        if (!$id) {
             return $this->jsonResponse(['success' => false, 'message' => 'Notification ID required'], 400);
         }
 
@@ -77,14 +77,14 @@ class NotificationsController extends AppController
         try {
             $notificationsTable = $this->fetchTable('Notifications');
             $notification = $notificationsTable->find()
-                ->where(['id' => $notificationId, 'user_id' => $identity->id])
+                ->where(['id' => $id, 'user_id' => $identity->id])
                 ->first();
             
             if (!$notification) {
                 return $this->jsonResponse(['success' => false, 'message' => 'Notification not found'], 404);
             }
             
-            if ($notificationsTable->markAsRead($notificationId)) {
+            if ($notificationsTable->markAsRead((int)$id)) {
                 return $this->jsonResponse(['success' => true, 'message' => 'Notification marked as read']);
             }
             

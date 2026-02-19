@@ -7,7 +7,7 @@ namespace App\Controller;
  * Reels Controller
  * 
  * Handles the Reels feature - short-form vertical videos that auto-play
- * Only shows posts with exactly one video attachment
+ * Only shows posts with exactly one video attachment and no other attachments
  */
 class ReelsController extends AppController
 {
@@ -27,7 +27,23 @@ class ReelsController extends AppController
         $start = (int)$this->request->getQuery('start', 0);
         $limit = (int)$this->request->getQuery('limit', 5);
         
-        // Query for posts with exactly 1 video attachment
+        // Query for posts with exactly 1 video attachment and no other attachments
+        // Use a subquery to find posts with exactly 1 attachment
+        $connection = $this->Posts->getConnection();
+        $subquery = $connection
+            ->newQuery()
+            ->select(['post_id'])
+            ->from('post_attachments')
+            ->where(['upload_status' => 'completed'])
+            ->group('post_id')
+            ->having('COUNT(*) = 1');
+        
+        // Debug: Log the subquery
+        if ($start === 0) { // Only log on first page load
+            $this->log('Reels subquery SQL: ' . $subquery->sql(), 'debug');
+        }
+        
+        // Now get posts where the single attachment is a video
         $query = $this->Posts->find()
             ->select([
                 'Posts.id',
@@ -47,16 +63,25 @@ class ReelsController extends AppController
             ->contain(['Users'])
             ->where([
                 'Posts.deleted_at IS' => null,
+                'Posts.id IN' => $subquery,
                 'PostAttachments.file_type' => 'video',
                 'PostAttachments.upload_status' => 'completed'
             ])
-            ->groupBy(['Posts.id'])
-            ->having(['COUNT(PostAttachments.id) = 1']) // Only single video posts
             ->order(['Posts.created_at' => 'DESC'])
             ->offset($start)
             ->limit($limit);
         
+        // Debug: Log the main query
+        if ($start === 0) { // Only log on first page load
+            $this->log('Reels main query SQL: ' . $query->sql(), 'debug');
+        }
+            
         $posts = $query->toArray();
+        
+        // Debug: Log results count
+        if ($start === 0) {
+            $this->log('Reels found ' . count($posts) . ' posts', 'debug');
+        }
         
         // Enhance posts with attachment data and reaction/comment counts
         foreach ($posts as $post) {

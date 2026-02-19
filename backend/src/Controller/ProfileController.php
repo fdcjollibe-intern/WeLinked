@@ -409,7 +409,7 @@ class ProfileController extends AppController
             return $this->response->withType('application/json')
                 ->withStringBody(json_encode([
                     'success' => true,
-                    'message' => 'Profile updated successfully',
+                    'message' => 'Changes Updated Successfully',
                     'user' => [
                         'id' => $user->id,
                         'username' => $user->username,

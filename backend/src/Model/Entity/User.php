@@ -38,6 +38,8 @@ class User extends Entity
         'location' => true,
         'website' => true,
         'birthday' => true,
+        'birthdate' => true,
+        'is_birthday_public' => true,
         'gender' => true,
         'is_private' => true,
         'created_at' => true,

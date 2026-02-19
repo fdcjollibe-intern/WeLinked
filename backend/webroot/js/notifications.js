@@ -10,6 +10,8 @@ class NotificationsManager {
         this.pollInterval = null;
         this.slowPollInterval = null;
         this.isVisible = true;
+        this.useWebSocket = true; // Try WebSocket first
+        this.wsClient = null;
         this.init();
     }
 
@@ -17,7 +19,172 @@ class NotificationsManager {
         this.attachEventListeners();
         this.attachVisibilityListener();
         this.fetchUnreadCount();
+        
+        // Try WebSocket connection first
+        this.initWebSocket();
+    }
+
+    /**
+     * Initialize WebSocket connection
+     */
+    async initWebSocket() {
+        try {
+            // Check if Socket.io is loaded
+            if (typeof io === 'undefined') {
+                console.warn('[Notifications] Socket.io not loaded');
+                this.enablePollingFallback();
+                return;
+            }
+            
+            // Check if WebSocketClient is available
+            if (typeof WebSocketClient === 'undefined') {
+                console.warn('[Notifications] WebSocketClient not available');
+                this.enablePollingFallback();
+                return;
+            }
+
+            // Get WebSocket token from backend
+            console.log('[Notifications] Fetching WebSocket token...');
+            const response = await fetch('/api/auth/websocket-token');
+            
+            if (!response.ok) {
+                console.error('[Notifications] Failed to get WebSocket token:', response.status);
+                this.enablePollingFallback();
+                return;
+            }
+            
+            const data = await response.json();
+            if (!data.success || !data.token) {
+                console.error('[Notifications] Invalid token response');
+                this.enablePollingFallback();
+                return;
+            }
+            
+            console.log('[Notifications] ✓ WebSocket token obtained');
+
+            // Create and connect WebSocket client
+            this.wsClient = new WebSocketClient();
+            
+            // Register callbacks
+            this.wsClient.onNotification((notification) => {
+                this.handleWebSocketNotification(notification);
+            });
+
+            this.wsClient.onCountUpdate((count) => {
+                this.updateUnreadBadge(count);
+            });
+
+            // Connect with token
+            console.log('[Notifications] Connecting to WebSocket server...');
+            await this.wsClient.connect(data.token);
+
+            // Check connection after 5 seconds
+            setTimeout(() => {
+                if (!this.wsClient.isConnected()) {
+                    console.warn('[Notifications] WebSocket not connected after 5s, falling back to polling');
+                    this.enablePollingFallback();
+                } else {
+                    console.log('%c🍔 BURGER MODE ACTIVE - WebSocket real-time notifications!', 'color: #10B981; font-weight: bold; font-size: 14px;');
+                    console.log('[Notifications] Connection stable, real-time mode enabled');
+                }
+            }, 5000);
+
+        } catch (error) {
+            console.error('%c[Notifications] ❌ WebSocket initialization error:', 'color: #EF4444; font-weight: bold;', error);
+            this.enablePollingFallback();
+        }
+    }
+
+    /**
+     * Enable polling as fallback
+     */
+    enablePollingFallback() {
+        // Don't enable polling if already active
+        if (!this.useWebSocket && this.pollInterval) {
+            console.log('[Notifications] Polling already active, skipping...');
+            return;
+        }
+        
+        // Don't enable polling if WebSocket is connected
+        if (this.wsClient && this.wsClient.isConnected()) {
+            console.log('[Notifications] WebSocket active, not enabling polling');
+            return;
+        }
+        
+        console.log('[Notifications] Enabling polling fallback...');
+        this.useWebSocket = false;
         this.startPolling();
+        console.log('%c🥚 EGG MODE ACTIVE - Polling every 2 seconds', 'color: #F97316; font-weight: bold; font-size: 14px;');
+    }
+
+    /**
+     * Get session token from cookie
+     */
+    getSessionToken() {
+        console.log('[Notifications] All cookies:', document.cookie);
+        
+        // Get session cookie for authentication
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            console.log(`[Notifications] Cookie found: ${name} = ${value?.substring(0, 20)}...`);
+            
+            if (name === 'welinked_session' || name === 'PHPSESSID') {
+                console.log(`[Notifications] ✓ Using session cookie: ${name}`);
+                return value;
+            }
+        }
+        
+        console.warn('[Notifications] ✗ No session cookie found (welinked_session or PHPSESSID)');
+        return null;
+    }
+
+    /**
+     * Handle WebSocket notification
+     */
+    handleWebSocketNotification(notification) {
+        // Refresh notification count
+        this.fetchUnreadCount();
+        
+        // Show toast notification
+        this.showToastNotification(notification);
+    }
+
+    /**
+     * Show toast notification
+     */
+    showToastNotification(notification) {
+        // Simple toast implementation (you can enhance this)
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-4 rounded-lg shadow-xl z-50 animate-slide-in';
+        toast.innerHTML = `
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined">notifications</span>
+                <div>
+                    <p class="font-semibold">${notification.message || 'New notification'}</p>
+                    <p class="text-sm opacity-90">Click to view</p>
+                </div>
+            </div>
+        `;
+        toast.style.cursor = 'pointer';
+        toast.onclick = () => {
+            this.toggleDropdown();
+            document.body.removeChild(toast);
+        };
+        
+        document.body.appendChild(toast);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (document.body.contains(toast)) {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    if (document.body.contains(toast)) {
+                        document.body.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }, 5000);
     }
 
     /**
@@ -69,16 +236,28 @@ class NotificationsManager {
     attachVisibilityListener() {
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                // Tab hidden - pause aggressive polling, switch to slower polling
+                // Tab hidden
                 this.isVisible = false;
-                this.stopPolling();
-                this.startSlowPolling();
+                
+                // If using polling, switch to slower interval
+                if (!this.useWebSocket) {
+                    this.stopPolling();
+                    this.startSlowPolling();
+                }
+                // WebSocket remains connected but is more efficient
             } else {
-                // Tab visible again - resume real-time polling
+                // Tab visible again
                 this.isVisible = true;
-                this.stopSlowPolling();
-                this.fetchUnreadCount(); // Immediate fetch
-                this.startPolling();
+                
+                // If using polling, resume real-time polling
+                if (!this.useWebSocket) {
+                    this.stopSlowPolling();
+                    this.fetchUnreadCount(); // Immediate fetch
+                    this.startPolling();
+                } else {
+                    // Just refresh count for WebSocket
+                    this.fetchUnreadCount();
+                }
             }
         });
     }
@@ -243,40 +422,71 @@ class NotificationsManager {
      * Handle notification click
      */
     async handleNotificationClick(notificationId, notifElement) {
-        console.log('handleNotificationClick called:', { notificationId, notifElement });
+        console.log('[Notification] Click handler called:', { notificationId, notifElement });
+        
+        if (!notificationId || isNaN(notificationId)) {
+            console.error('[Notification] Invalid notification ID:', notificationId);
+            return;
+        }
+        
         const targetType = notifElement.dataset.targetType;
         const targetId = notifElement.dataset.targetId;
         
-        console.log('Target:', { targetType, targetId });
+        console.log('[Notification] Target:', { targetType, targetId });
         
-        // Mark as read
-        await this.markAsRead(notificationId);
+        // Mark as read first
+        const marked = await this.markAsRead(notificationId);
         
-        // Navigate to target
-        if (targetType === 'post' && targetId) {
-            console.log('Navigating to post:', targetId);
-            // Navigate to single post view
-            window.location.href = `/post/${targetId}`;
-        } else {
-            console.log('Target type not handled or missing:', targetType, targetId);
+        if (!marked) {
+            console.warn('[Notification] Failed to mark as read, but continuing...');
         }
         
-        this.hideDropdown();
+        // Update UI immediately
+        notifElement.classList.remove('bg-blue-50');
+        const unreadDot = notifElement.querySelector('.bg-blue-500');
+        if (unreadDot) {
+            unreadDot.remove();
+        }
+        
+        // Navigate to target if applicable
+        if (targetType === 'post' && targetId) {
+            console.log('[Notification] Navigating to post:', targetId);
+            window.location.href = `/post/${targetId}`;
+        } else if (targetType === 'comment' && targetId) {
+            console.log('[Notification] Navigating to comment:', targetId);
+            // You can implement comment navigation if needed
+            this.hideDropdown();
+        } else {
+            console.log('[Notification] No navigation target, closing dropdown');
+            this.hideDropdown();
+        }
     }
 
     /**
      * Mark notification as read
      */
     async markAsRead(notificationId) {
+        console.log('[Notification] Marking as read:', notificationId);
+        
         try {
+            const csrfToken = window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.content || '';
+            
             const response = await fetch(`/api/notifications/mark-read/${notificationId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(csrfToken && { 'X-CSRF-Token': csrfToken })
                 }
             });
 
+            if (!response.ok) {
+                console.error('[Notification] Mark as read failed:', response.status, response.statusText);
+                return false;
+            }
+
             const result = await response.json();
+            console.log('[Notification] Mark as read response:', result);
             
             if (result.success) {
                 // Update UI
@@ -291,9 +501,20 @@ class NotificationsManager {
                 
                 // Update count
                 this.fetchUnreadCount();
+                
+                // Notify WebSocket if connected
+                if (this.wsClient && this.wsClient.isConnected()) {
+                    this.wsClient.markNotificationRead(notificationId);
+                }
+                
+                return true;
+            } else {
+                console.error('[Notification] Server returned error:', result.message);
+                return false;
             }
         } catch (error) {
-            console.error('Mark as read error:', error);
+            console.error('[Notification] Mark as read error:', error);
+            return false;
         }
     }
 
@@ -348,6 +569,8 @@ class NotificationsManager {
         this.pollInterval = setInterval(() => {
             this.fetchUnreadCount();
         }, 2000); // 2 seconds - ALWAYS LISTENING
+        
+        console.log('[Notifications] Started polling every 2 seconds');
     }
 
     /**
@@ -390,5 +613,10 @@ window.addEventListener('beforeunload', () => {
     if (window.notificationsManager) {
         window.notificationsManager.stopPolling();
         window.notificationsManager.stopSlowPolling();
+        
+        // Disconnect WebSocket if connected
+        if (window.notificationsManager.wsClient) {
+            window.notificationsManager.wsClient.disconnect();
+        }
     }
 });

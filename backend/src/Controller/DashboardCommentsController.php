@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Service\CloudinaryUploader;
+use App\Service\RedisNotificationService;
 use Cake\Core\Configure;
 
 class DashboardCommentsController extends AppController
@@ -69,7 +70,29 @@ class DashboardCommentsController extends AppController
                         'message' => ($actor ? $actor->username : 'Someone') . ' commented on your post',
                         'is_read' => false,
                     ]);
-                    $notificationsTable->save($notification);
+                    
+                    if ($notificationsTable->save($notification)) {
+                        // Publish to Redis for real-time WebSocket delivery
+                        try {
+                            $redis = new RedisNotificationService();
+                            $unreadCount = $notificationsTable->getUnreadCount($post->user_id);
+                            $redis->publishNewNotification($post->user_id, [
+                                'id' => $notification->id,
+                                'type' => $notification->type,
+                                'message' => $notification->message,
+                                'actor' => [
+                                    'id' => $identity->id,
+                                    'username' => $actor ? $actor->username : null
+                                ],
+                                'target_type' => 'post',
+                                'target_id' => $postId,
+                                'created_at' => $notification->created_at ? $notification->created_at->format('c') : date('c')
+                            ]);
+                            $redis->publishUnreadCount($post->user_id, $unreadCount);
+                        } catch (\Exception $e) {
+                            $this->log('Redis publish error: ' . $e->getMessage(), 'warning');
+                        }
+                    }
                 }
                 
                 $usersTable = $this->fetchTable('Users');

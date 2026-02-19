@@ -13,7 +13,7 @@ class DashboardMiddleColumnController extends AppController
 
         // Pagination params for AJAX loading
         $start = (int)$this->request->getQuery('start', 0);
-        $limit = 20;
+        $limit = 8;
         $feed = $this->request->getQuery('feed', 'friends'); // Changed default to 'friends'
 
         // Get current user ID for reaction checking
@@ -81,21 +81,17 @@ class DashboardMiddleColumnController extends AppController
                     $this->log("No friends found, showing only current user's posts", 'debug');
                 }
             } elseif ($feed === 'reels') {
-                $this->log("Feed is 'reels', filtering for videos only...", 'debug');
-                // Only show posts with exactly 1 video attachment
-                $query->innerJoin(
-                    ['PostAttachments' => 'post_attachments'],
-                    ['PostAttachments.post_id = Posts.id']
-                )
-                ->where([
-                    'PostAttachments.file_type' => 'video',
-                    'PostAttachments.upload_status' => 'completed'
-                ])
-                ->groupBy(['Posts.id'])
-                ->having(['COUNT(PostAttachments.id) = 1']);
-                $this->log("Filtering for posts with exactly 1 video attachment", 'debug');
+                $this->log("Feed is 'reels', filtering for is_reel = true...", 'debug');
+                // Only show posts marked as reels (posts with exactly 1 video attachment)
+                $query->where(['Posts.is_reel' => true]);
+                $this->log("Filtering for posts with is_reel = true", 'debug');
             } else {
-                $this->log("Feed is 'foryou' or no user, showing all posts", 'debug');
+                $this->log("Feed is 'foryou' or no user, showing all posts (excluding reels)", 'debug');
+                // For 'foryou' feed, exclude reels to keep them separate
+                $query->where(['OR' => [
+                    ['Posts.is_reel IS' => null],
+                    ['Posts.is_reel' => false]
+                ]]);
             }
             // For 'foryou', show all posts (no additional filter needed)
 
@@ -112,6 +108,12 @@ class DashboardMiddleColumnController extends AppController
             if (count($posts) > 0) {
                 $postIds = array_map(function($p) { return $p->id; }, $posts);
                 $this->log("Post IDs: " . implode(', ', $postIds), 'debug');
+                if ($feed === 'reels') {
+                    $reelStatus = array_map(function($p) { 
+                        return "Post {$p->id}: is_reel=" . ($p->is_reel ? 'true' : ($p->is_reel === false ? 'false' : 'null')); 
+                    }, $posts);
+                    $this->log("Reel status: " . implode(', ', $reelStatus), 'debug');
+                }
             } else {
                 $this->log("WARNING: No posts found! Check database and filters.", 'debug');
             }
