@@ -25,7 +25,7 @@ $reactionEmojis = [
     'love' => '🥰',
     'wow' => '😮',
     'sad' => '😢',
-    'angry' => '😠'
+    'angry' => '😡',
 ];
 
 // Current feed type

@@ -25,7 +25,7 @@ $reactionEmojis = [
     'love' => '🥰',
     'wow' => '😮',
     'sad' => '😢',
-    'angry' => '😠'
+    'angry' => '😡',
 ];
 ?>
 <?= $this->Html->css('dashboard') ?>
