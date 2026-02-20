@@ -412,7 +412,7 @@ class NotificationsManager {
                     ''
                 }
             </div>
-            <div class="max-h-96 overflow-y-auto">
+            <div class="max-h-200 overflow-y-auto">
                 ${notificationsHTML}
             </div>
         `;

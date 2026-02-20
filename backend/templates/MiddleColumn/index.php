@@ -145,7 +145,7 @@ $currentFeed = $feed ?? 'friends';
                     arsort($reactionCounts);
                     $topReactions = array_slice(array_keys($reactionCounts), 0, 3);
                 ?>
-                <article id="post-<?= h($post->id ?? $idx) ?>" class="post bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5" data-index="<?= $idx ?>" data-post-id="<?= h($post->id ?? $idx) ?>">
+                <article id="post-<?= h($post->id ?? $idx) ?>" class="post bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5" data-index="<?= $idx ?>" data-post-id="<?= h($post->id ?? $idx) ?>" data-is-reel="<?= ($post->is_reel ?? false) ? 'true' : 'false' ?>">
                     <!-- Post Header -->
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center space-x-3">

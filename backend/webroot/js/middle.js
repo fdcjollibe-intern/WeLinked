@@ -995,106 +995,232 @@
       }
     }
 
-    // Infinite scroll: fetch next fragments from /dashboard/middle-column?start=N&feed=...
-    (function initInfiniteScroll(){
-      const postsList = document.getElementById('posts-list');
-      if(!postsList) return;
-      let loading = false;
-      let limit = 8;
-      let hasMorePosts = true;
-      let currentObserver = null;
+    // Initialize infinite scroll with current feed type
+    const postsList = document.getElementById('posts-list');
+    if (postsList) {
+      const feedType = postsList.getAttribute('data-feed') || 'friends';
+      console.log('[middle.js] Setting up infinite scroll for feed:', feedType);
+      initInfiniteScroll(feedType);
+    } else {
+      console.log('[middle.js] ⚠️ No posts-list found, skipping infinite scroll setup');
+    }
+  }
+
+  // Global cleanup function for infinite scroll
+  window.cleanupInfiniteScroll = function() {
+    console.log('[middle.js] 🧹 GLOBAL CLEANUP: Removing all infinite scroll handlers');
+    
+    // Remove scroll handler
+    if (window.infiniteScrollHandler) {
+      window.removeEventListener('scroll', window.infiniteScrollHandler);
+      window.infiniteScrollHandler = null;
+      console.log('[middle.js] ✅ Scroll handler removed');
+    }
+    
+    // Remove observers
+    if (window.currentScrollObserver) {
+      window.currentScrollObserver.disconnect();
+      window.currentScrollObserver = null;
+      console.log('[middle.js] ✅ Observer disconnected');
+    }
+    
+    // Cancel any pending scroll timeouts
+    if (window.scrollCheckTimeout) {
+      clearTimeout(window.scrollCheckTimeout);
+      window.scrollCheckTimeout = null;
+      console.log('[middle.js] ✅ Scroll timeout canceled');
+    }
+    
+    // Cancel any pending initializations
+    if (window.pendingMiddleColumnInit) {
+      clearTimeout(window.pendingMiddleColumnInit);
+      window.pendingMiddleColumnInit = null;
+      console.log('[middle.js] ✅ Pending initialization canceled');
+    }
+  };
+
+  // Infinite scroll: fetch next fragments from /dashboard/middle-column?start=N&feed=...
+  function initInfiniteScroll(feedType) {
+    console.log('[Infinite Scroll] 🚀 Initializing for feed:', feedType);
+    const postsList = document.getElementById('posts-list');
+    if(!postsList) {
+      console.log('[Infinite Scroll] ❌ posts-list not found');
+      return;
+    }
+    
+    // Ensure complete cleanup first
+    window.cleanupInfiniteScroll();
+    
+    let loading = false;
+    let limit = 8;
+    let hasMorePosts = true;
+    let lastLoadTime = 0;
+    const MIN_LOAD_INTERVAL = 2000; // Minimum 2 seconds between loads
       
       function loadMore(){
-        if(loading || !hasMorePosts) return; 
+        const now = Date.now();
+        
+        // Double-check we're still on the same feed
+        const currentPostsList = document.getElementById('posts-list');
+        if(!currentPostsList) {
+          console.log('[Infinite Scroll] ❌ posts-list not found, aborting');
+          return;
+        }
+        
+        const activeFeed = currentPostsList.getAttribute('data-feed');
+        if(activeFeed !== feedType) {
+          console.log('[Infinite Scroll] ❌ Feed changed! Was', feedType, 'now', activeFeed, '- stopping');
+          hasMorePosts = false;
+          window.cleanupInfiniteScroll(); // Clean up this instance
+          return;
+        }
+        
+        // Prevent multiple simultaneous loads
+        if(loading) {
+          console.log('[Infinite Scroll] ❌ Load already in progress');
+          return;
+        }
+        
+        if(!hasMorePosts) {
+          console.log('[Infinite Scroll] ℹ️ No more posts available');
+          return;
+        }
+        
+        // Prevent rapid-fire loading with time check
+        const timeSinceLastLoad = now - lastLoadTime;
+        if(lastLoadTime > 0 && timeSinceLastLoad < MIN_LOAD_INTERVAL) {
+          console.log('[Infinite Scroll] ⏱️ Throttling - wait', (MIN_LOAD_INTERVAL - timeSinceLastLoad) + 'ms more');
+          return;
+        }
+        
+        // Set flag immediately
         loading = true;
-        const start = parseInt(postsList.getAttribute('data-start')||0,10) + postsList.querySelectorAll('.post').length;
-        const feed = postsList.getAttribute('data-feed') || 'friends';
+        lastLoadTime = now;
         
-        console.log('[Infinite Scroll] Loading more posts...', { start, feed, currentPosts: postsList.querySelectorAll('.post').length });
-        console.log('[Infinite Scroll] Feed type being requested:', feed);
+        console.log('[Infinite Scroll] ✅ Loading more posts for feed:', feedType);
+        const currentPostCount = postsList.querySelectorAll('.post').length;
+        const start = parseInt(postsList.getAttribute('data-start')||0, 10) + currentPostCount;
         
-        fetch('/dashboard/middle-column?start=' + start + '&feed=' + encodeURIComponent(feed))
+        console.log('[Infinite Scroll] Request:', { start, feed: feedType, currentPostCount });
+        
+        fetch('/dashboard/middle-column?start=' + start + '&feed=' + encodeURIComponent(feedType))
           .then(r => r.text())
           .then(html => {
-            // parse returned fragment and extract posts
-            const tmp = document.createElement('div'); tmp.innerHTML = html;
+            const tmp = document.createElement('div'); 
+            tmp.innerHTML = html;
             const newList = tmp.querySelector('#posts-list');
-            if(!newList) { loading=false; return; }
             
-            // Verify the feed type in the loaded content
-            const loadedFeed = newList.getAttribute('data-feed');
-            console.log('[Infinite Scroll] Loaded content has feed type:', loadedFeed);
-            if(loadedFeed !== feed) {
-              console.warn('[Infinite Scroll] WARNING: Feed mismatch! Expected:', feed, 'Got:', loadedFeed);
+            if(!newList) { 
+              console.log('[Infinite Scroll] ❌ No posts-list in response');
+              loading = false; 
+              return; 
             }
             
-            const children = newList.children;
-            let appended = 0;
-            Array.from(children).forEach(ch => { postsList.appendChild(ch); appended++; });
-            
-            console.log('[Infinite Scroll] Loaded', appended, 'new posts');
-            
-            // update start
-            const newStart = start + appended;
-            postsList.setAttribute('data-start', newStart);
-            // if less than limit returned, stop further loads
-            if(appended < limit){ 
+            // Check if feed changed while we were loading
+            const currentPostsListNow = document.getElementById('posts-list');
+            const activeFeedNow = currentPostsListNow?.getAttribute('data-feed');
+            if(activeFeedNow !== feedType) {
+              console.log('[Infinite Scroll] ⚠️ Feed changed during load - discarding results');
+              loading = false;
               hasMorePosts = false;
-              console.log('[Infinite Scroll] No more posts to load');
-            } else {
-              // Set up observer for the new 5th post from end
-              setupScrollMarker();
+              window.cleanupInfiniteScroll(); // Clean up this instance
+              return;
             }
-            loading=false;
-          }).catch((err)=>{ 
-            console.error('[Infinite Scroll] Load failed:', err);
-            loading=false; 
+            
+            const loadedFeed = newList.getAttribute('data-feed');
+            if(loadedFeed !== feedType) {
+              console.warn('[Infinite Scroll] ⚠️ Response feed mismatch! Expected:', feedType, 'Got:', loadedFeed);
+            }
+            
+            const children = Array.from(newList.children);
+            let appended = 0;
+            
+            children.forEach(ch => {
+              const isReel = ch.getAttribute('data-is-reel') === 'true';
+              
+              // Filter posts based on feed type
+              if (feedType === 'reels' && !isReel) return;
+              if ((feedType === 'friends' || feedType === 'foryou') && isReel) return;
+              
+              postsList.appendChild(ch);
+              appended++;
+            });
+            
+            console.log('[Infinite Scroll] ✅ Appended', appended, 'posts for', feedType, '(total now:', postsList.querySelectorAll('.post').length, ')');
+            
+            // Update start attribute
+            postsList.setAttribute('data-start', start);
+            
+            // Check if we got fewer than limit - means no more posts
+            if(appended < limit) { 
+              hasMorePosts = false;
+              console.log('[Infinite Scroll] 📭 No more posts to load for', feedType);
+            }
+            
+            loading = false;
+          })
+          .catch((err) => { 
+            console.error('[Infinite Scroll] ❌ Load failed:', err);
+            loading = false;
           });
       }
       
-      function setupScrollMarker(){
-        // Clean up previous observer
-        if(currentObserver) {
-          currentObserver.disconnect();
-          currentObserver = null;
+      // Simple scroll-based trigger - check if near bottom of page
+      function checkScrollPosition() {
+        if(loading || !hasMorePosts) return;
+        
+        // Double-check the feed hasn't changed (prevents race conditions)
+        const currentPostsList = document.getElementById('posts-list');
+        if(!currentPostsList) return;
+        
+        const activeFeed = currentPostsList.getAttribute('data-feed');
+        if(activeFeed !== feedType) {
+          console.log('[Infinite Scroll] Feed mismatch during scroll check - stopping (expected:', feedType, 'got:', activeFeed, ')');
+          hasMorePosts = false; // Stop this instance
+          window.cleanupInfiniteScroll();
+          return;
         }
         
-        const posts = postsList.querySelectorAll('.post');
-        if(posts.length < 5) return;
+        // Get scroll position
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
         
-        // Target the 5th post from the end as our trigger marker
-        const marker = posts[posts.length - 5];
-        if(!marker) return;
+        // Require minimum scroll position (user must have scrolled at least 300px)
+        if(scrollTop < 300) return;
         
-        // Use Intersection Observer with threshold to trigger only when marker is 50% visible
-        currentObserver = new IntersectionObserver((entries) => {
-          entries.forEach(entry => {
-            // Trigger when 50% of the marker element is visible AND scrolling down
-            if(entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-              console.log('[Infinite Scroll] Marker reached (5th from end)');
-              loadMore();
-            }
-          });
-        }, {
-          threshold: 0.5, // Trigger when 50% of the marker is visible
-          rootMargin: '0px' // No margin - must actually scroll to it
-        });
+        // Calculate distance from bottom
+        const distanceFromBottom = documentHeight - (scrollTop + windowHeight);
         
-        currentObserver.observe(marker);
-        console.log('[Infinite Scroll] Marker set at post', posts.length - 5, 'of', posts.length);
-      }
-      
-      // Initial setup
-      setupScrollMarker();
-      
-      // Fallback check for initial load if not enough content
-      setTimeout(() => {
-        if(document.body.offsetHeight <= window.innerHeight + 100 && hasMorePosts && !loading) {
-          console.log('[Infinite Scroll] Initial content too short, loading more...');
+        // Trigger when within 800px of bottom
+        if(distanceFromBottom < 800) {
+          console.log('[Infinite Scroll] 🎯 Near bottom (', distanceFromBottom, 'px away) - triggering load for', feedType);
           loadMore();
         }
+      }
+      
+      // Throttled scroll handler
+      let scrollTimeout = null;
+      function handleScroll() {
+        if(scrollTimeout) return; // Already scheduled
+        
+        scrollTimeout = setTimeout(() => {
+          scrollTimeout = null;
+          checkScrollPosition();
+        }, 200); // Check at most every 200ms
+      }
+      
+      // Store handler globally for cleanup
+      window.infiniteScrollHandler = handleScroll;
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      
+      console.log('[Infinite Scroll] ✅ Initialized for feed:', feedType, '- scroll handler attached');
+      
+      // Initial check after small delay to allow DOM to settle
+      window.scrollCheckTimeout = setTimeout(() => {
+        console.log('[Infinite Scroll] Running initial scroll check for', feedType);
+        checkScrollPosition();
       }, 500);
-    })();
   }
 
   // Global navigation interceptor for unsaved changes
@@ -1191,11 +1317,17 @@
     console.log('[middle.js] Path:', e.detail?.path);
     
     if (e.detail && e.detail.container === 'middle-component') {
-      console.log('[middle.js] ✨ Middle column fragment loaded, scheduling re-initialization in 50ms...');
-      setTimeout(function() {
-        console.log('[middle.js] ⏰ 50ms delay complete, calling initializeMiddleColumn...');
-        initializeMiddleColumn();
-      }, 50); // Small delay to ensure DOM is ready
+      console.log('[middle.js] ✨ Middle column fragment loaded - initializing immediately');
+      
+      // Cancel any pending initialization to prevent overlaps
+      if (window.pendingMiddleColumnInit) {
+        console.log('[middle.js] Canceling previous pending initialization');
+        clearTimeout(window.pendingMiddleColumnInit);
+        window.pendingMiddleColumnInit = null;
+      }
+      
+      // Initialize immediately - no delay to prevent race conditions
+      initializeMiddleColumn();
     } else {
       console.log('[middle.js] ⏭️ Fragment is not for middle-component, ignoring');
     }

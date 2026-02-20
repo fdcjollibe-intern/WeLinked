@@ -264,12 +264,28 @@
     function switchFeed(tab, feed) {
       console.log('[dashboard.js] Switching to feed:', feed);
       
+      // CRITICAL: Cancel any pending initializations first
+      if (window.pendingMiddleColumnInit) {
+        console.log('[dashboard.js] Canceling pending middle column initialization');
+        clearTimeout(window.pendingMiddleColumnInit);
+        window.pendingMiddleColumnInit = null;
+      }
+      
+      // Complete cleanup of all scroll handlers and observers
+      if (typeof window.cleanupInfiniteScroll === 'function') {
+        console.log('[dashboard.js] Running complete infinite scroll cleanup');
+        window.cleanupInfiniteScroll();
+      }
+      
       // Update active tab styling
       const allTabs = middleComponent.querySelectorAll('.feed-tab');
       allTabs.forEach(function(t) {
         t.className = 'feed-tab text-gray-400 hover:text-gray-600';
       });
       tab.className = 'feed-tab text-blue-500 font-medium border-b-2 border-blue-500 pb-1';
+      
+      // Scroll to top before loading new feed
+      window.scrollTo(0, 0);
       
       // Load posts for selected feed
       loadComponent('/dashboard/middle-column', 'middle-component', { feed: feed, start: 0 })

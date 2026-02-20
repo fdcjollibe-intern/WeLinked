@@ -121,6 +121,7 @@ return function (RouteBuilder $routes): void {
         // Birthdays API
         $builder->connect('/birthdays', ['controller' => 'Birthdays', 'action' => 'index']);
         $builder->connect('/birthdays/get-count', ['controller' => 'Birthdays', 'action' => 'getCount']);
+        $builder->connect('/birthdays/get-sidebar-data', ['controller' => 'Birthdays', 'action' => 'getSidebarData']);
         $builder->connect('/birthday', ['controller' => 'Birthdays', 'action' => 'list']);
         $builder->connect('/birthday/sent', ['controller' => 'Birthdays', 'action' => 'sent']);
         $builder->connect('/birthday/messages', ['controller' => 'Birthdays', 'action' => 'messages']);

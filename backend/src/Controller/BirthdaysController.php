@@ -166,6 +166,51 @@ class BirthdaysController extends AppController
     }
     
     /**
+     * Get follower birthdays for right sidebar display
+     */
+    public function getSidebarData()
+    {
+        $this->request->allowMethod(['get']);
+        
+        $identity = $this->request->getAttribute('identity');
+        $currentUserId = $identity?->getIdentifier();
+        
+        if (!$currentUserId) {
+            return $this->response->withType('application/json')
+                ->withStringBody(json_encode([
+                    'success' => true,
+                    'today' => [],
+                    'upcoming' => [],
+                    'past' => [],
+                    'total' => 0
+                ]));
+        }
+        
+        $birthdays = $this->getFollowerBirthdays($currentUserId);
+        
+        // Separate today's birthdays from upcoming ones
+        $todayBirthdays = [];
+        $upcomingBirthdays = [];
+        
+        foreach ($birthdays['upcoming'] as $birthday) {
+            if ($birthday['daysAway'] == 0) {
+                $todayBirthdays[] = $birthday;
+            } else {
+                $upcomingBirthdays[] = $birthday;
+            }
+        }
+        
+        return $this->response->withType('application/json')
+            ->withStringBody(json_encode([
+                'success' => true,
+                'today' => $todayBirthdays,
+                'upcoming' => $upcomingBirthdays,
+                'past' => $birthdays['past'] ?? [],
+                'total' => count($todayBirthdays) + count($upcomingBirthdays) + count($birthdays['past'])
+            ]));
+    }
+    
+    /**
      * Birthday list page - shows followers' birthdays
      */
     public function list()

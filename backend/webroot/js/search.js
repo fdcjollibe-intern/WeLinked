@@ -79,7 +79,7 @@ class SearchManager {
     createDropdown() {
         this.searchDropdown = document.createElement('div');
         this.searchDropdown.id = 'search-dropdown';
-        this.searchDropdown.className = 'absolute top-full left-0 mt-2 w-full md:w-96 bg-white border border-gray-200 rounded-lg shadow-xl z-50 hidden max-h-96 overflow-hidden';
+        this.searchDropdown.className = 'absolute top-full left-0 mt-2 w-full md:w-96 bg-white border border-gray-200 rounded-lg shadow-xl z-50 hidden max-h-200 overflow-hidden';
         
         const searchContainer = this.searchInput.closest('.flex.items-center');
         if (searchContainer) {
@@ -95,7 +95,7 @@ class SearchManager {
         this.showLoading();
         
         try {
-            const response = await fetch(`/api/search/suggest?q=${encodeURIComponent(query)}&type=${this.currentType}&limit=5`);
+            const response = await fetch(`/api/search/suggest?q=${encodeURIComponent(query)}&type=${this.currentType}&limit=6`);
             const data = await response.json();
             
             if (data.success) {
@@ -116,7 +116,7 @@ class SearchManager {
         if (!this.searchDropdown) return;
         
         const tabs = `
-            <div class="flex border-b border-gray-200 px-2 py-2">
+            <div class="flex border-b border-gray-200 px-2 py-2 flex-shrink-0">
                 <button class="search-tab-btn flex-1 px-3 py-2 text-sm font-medium rounded-lg ${this.currentType === 'users' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}" data-type="users">
                     Users
                 </button>
@@ -127,12 +127,15 @@ class SearchManager {
         `;
         
         if (results.length === 0) {
-            this.searchDropdown.innerHTML = tabs + `
-                <div class="p-6 text-center text-gray-500">
-                    <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="text-sm">No results found</p>
+            this.searchDropdown.innerHTML = `
+                <div class="flex flex-col h-full">
+                    ${tabs}
+                    <div class="p-6 text-center text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-sm">No results found</p>
+                    </div>
                 </div>
             `;
             this.showDropdown();
@@ -190,12 +193,24 @@ class SearchManager {
         
         const viewAllBtn = `
             <a href="/search?q=${encodeURIComponent(query)}&type=${this.currentType}" 
-               class="block px-4 py-3 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 border-t border-gray-200">
+               class="block px-4 py-3 text-center text-sm font-medium text-blue-600 hover:bg-blue-50 border-t border-gray-200 flex-shrink-0">
                 View all results
             </a>
         `;
         
-        this.searchDropdown.innerHTML = tabs + resultsHTML + viewAllBtn;
+        const resultsContainer = `
+            <div class="flex-1 overflow-y-auto">
+                ${resultsHTML}
+            </div>
+        `;
+        
+        this.searchDropdown.innerHTML = `
+            <div class="flex flex-col h-full">
+                ${tabs}
+                ${results.length > 0 ? resultsContainer : ''}
+                ${results.length > 0 ? viewAllBtn : ''}
+            </div>
+        `;
         this.showDropdown();
     }
 

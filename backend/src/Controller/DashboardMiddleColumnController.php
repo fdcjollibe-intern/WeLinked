@@ -80,6 +80,12 @@ class DashboardMiddleColumnController extends AppController
                     $query->where(['Posts.user_id' => $currentUserId]);
                     $this->log("No friends found, showing only current user's posts", 'debug');
                 }
+                // Exclude reels from friends feed
+                $query->where(['OR' => [
+                    ['Posts.is_reel IS' => null],
+                    ['Posts.is_reel' => false]
+                ]]);
+                $this->log("Friends feed: excluding reels", 'debug');
             } elseif ($feed === 'reels') {
                 $this->log("Feed is 'reels', filtering for is_reel = true...", 'debug');
                 // Only show posts marked as reels (posts with exactly 1 video attachment)
@@ -95,11 +101,15 @@ class DashboardMiddleColumnController extends AppController
             }
             // For 'foryou', show all posts (no additional filter needed)
 
-            // Randomize order so results are not sequential from DB.
-            // For both 'foryou' (all posts) and 'friends' (followed users)
-            $query->orderBy($query->func()->rand())
+            // Use deterministic ordering for proper pagination
+            // Random order causes issues with offset-based pagination
+            $query->orderBy(['Posts.created_at' => 'DESC'])
                 ->limit($limit)
                 ->offset($start);
+
+            // Debug: Log the actual SQL query
+            $sql = $query->sql();
+            $this->log("SQL Query: " . $sql, 'debug');
 
             $posts = $query->all()->toArray();
             
