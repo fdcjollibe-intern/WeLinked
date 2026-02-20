@@ -270,7 +270,14 @@
         thread.innerHTML = '<div class="text-center py-2 text-gray-400 text-sm">No comments yet. Be the first!</div>';
         return;
       }
-      comments.forEach((comment, index) => {
+      
+      // Store all comments for pagination
+      thread.dataset.allComments = JSON.stringify(comments);
+      thread.dataset.visibleCount = '4';
+      
+      // Show first 4 comments
+      const initialComments = comments.slice(0, 4);
+      initialComments.forEach((comment, index) => {
         console.log(`[comments.js] ========== COMMENT ${index + 1}/${comments.length} ==========`);
         console.log('[comments.js] Comment ID:', comment.id);
         console.log('[comments.js] Comment text:', comment.content_text);
@@ -282,6 +289,14 @@
         console.log('[comments.js] Full comment object:', comment);
         renderComment(thread, comment, post);
       });
+      
+      // Show "See more comments" button if there are more than 4 comments
+      if (comments.length > 4) {
+        const seeMoreBtn = document.createElement('button');
+        seeMoreBtn.className = 'see-more-comments-btn w-full text-gray-600 hover:text-blue-600 text-sm font-medium py-2 hover:bg-gray-50 rounded-lg transition-colors mt-2';
+        seeMoreBtn.textContent = `See more comments (${comments.length - 4} remaining)`;
+        thread.appendChild(seeMoreBtn);
+      }
     })
     .catch(err => {
       console.error('[comments.js] Failed to load comments', err);
@@ -354,6 +369,13 @@
             </svg>
           </button>` : ''}
         </div>
+        <!-- Reaction Summary -->
+        <div class="comment-reaction-summary" style="display:none;margin-top:8px;padding-left:8px;">
+          <div class="flex items-center gap-1.5 text-xs text-gray-600">
+            <span class="comment-reaction-emojis" style="display:flex;align-items:center;"></span>
+            <span class="comment-reaction-count">0</span>
+          </div>
+        </div>
       </div>
     `;
     thread.appendChild(item);
@@ -383,11 +405,10 @@
         updateCommentReactionButton(reactionBtn, comment.user_reaction);
       }
       
-      // Always update reaction count if it exists (even if current user hasn't reacted)
-      // Check for both null/undefined AND if object has any keys
+      // Always update reaction summary if it exists (even if current user hasn't reacted)
       if (reactionCounts && typeof reactionCounts === 'object' && Object.keys(reactionCounts).length > 0) {
-        console.log('[comments.js] Updating reaction count:', reactionCounts);
-        updateCommentReactionCount(reactionBtn, reactionCounts);
+        console.log('[comments.js] Updating reaction summary:', reactionCounts);
+        updateCommentReactionSummary(item, reactionCounts);
       } else {
         console.log('[comments.js] No reaction counts to display (empty or null)');
       }
@@ -715,6 +736,54 @@
     }
   }
 
+  function updateCommentReactionSummary(commentEl, counts) {
+    const EMOJIS = [
+      {key:'like', emoji:'❤️'},
+      {key:'love', emoji:'🥰'},
+      {key:'haha', emoji:'😂'},
+      {key:'wow', emoji:'😲'},
+      {key:'sad', emoji:'😢'},
+      {key:'angry', emoji:'😡'}
+    ];
+    
+    const summary = commentEl.querySelector('.comment-reaction-summary');
+    if (!summary) return;
+    
+    const emojisEl = summary.querySelector('.comment-reaction-emojis');
+    const countEl = summary.querySelector('.comment-reaction-count');
+    if (!emojisEl || !countEl) return;
+    
+    // Calculate total and find top 3
+    let total = 0;
+    const sorted = Object.entries(counts || {})
+      .filter(([k, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+    
+    sorted.forEach(([k, v]) => total += v);
+
+    if (total === 0) {
+      summary.style.display = 'none';
+      emojisEl.textContent = '';
+      countEl.textContent = '0';
+      return;
+    }
+    
+    summary.style.display = 'block';
+    
+    // Show top 3 reaction emojis with overlapping effect
+    const topEmojis = sorted.map(([key]) => {
+      const r = EMOJIS.find(e => e.key === key);
+      return r ? r.emoji : '';
+    }).filter(e => e);
+    
+    // Render emojis with overlap and white border
+    emojisEl.innerHTML = topEmojis.map((emoji, idx) => 
+      `<span class="reaction-emoji" style="display:inline-block;margin-left:${idx > 0 ? '-4px' : '0'};position:relative;z-index:${topEmojis.length - idx};text-shadow:-1px -1px 0 white,1px -1px 0 white,-1px 1px 0 white,1px 1px 0 white,0 -1px 0 white,0 1px 0 white,-1px 0 0 white,1px 0 0 white;font-size:14px;">${emoji}</span>`
+    ).join('');
+    countEl.textContent = total;
+  }
+
   function incrementCommentCount(post) {
     const countEl = post.querySelector('.comments-count');
     if (!countEl) return;
@@ -888,6 +957,7 @@
   
   // Expose function for use by other modules (e.g., modals)
   window.updateCommentReactionButton = updateCommentReactionButton;
+  window.updateCommentReactionSummary = updateCommentReactionSummary;
   
   // Test listener to see if any clicks are captured
   document.addEventListener('click', function(e) {
@@ -896,6 +966,49 @@
       console.log('[comments.js] GLOBAL CLICK on comment button detected!');
     }
   }, true); // Use capture phase
+  
+  // Handle "See more comments" button
+  document.addEventListener('click', function(e) {
+    const seeMoreBtn = e.target.closest('.see-more-comments-btn');
+    if (!seeMoreBtn) return;
+    
+    e.preventDefault();
+    const thread = seeMoreBtn.closest('.comment-thread');
+    if (!thread) return;
+    
+    const post = thread.closest('.post');
+    if (!post) return;
+    
+    try {
+      const allComments = JSON.parse(thread.dataset.allComments || '[]');
+      const visibleCount = parseInt(thread.dataset.visibleCount || '4', 10);
+      
+      // Show next 4 comments
+      const nextBatch = allComments.slice(visibleCount, visibleCount + 4);
+      
+      // Remove the see more button temporarily
+      seeMoreBtn.remove();
+      
+      // Render the next batch
+      nextBatch.forEach(comment => {
+        renderComment(thread, comment, post);
+      });
+      
+      // Update visible count
+      const newVisibleCount = visibleCount + nextBatch.length;
+      thread.dataset.visibleCount = newVisibleCount;
+      
+      // Re-add see more button if there are still more comments
+      if (newVisibleCount < allComments.length) {
+        const newSeeMoreBtn = document.createElement('button');
+        newSeeMoreBtn.className = 'see-more-comments-btn w-full text-gray-600 hover:text-blue-600 text-sm font-medium py-2 hover:bg-gray-50 rounded-lg transition-colors mt-2';
+        newSeeMoreBtn.textContent = `See more comments (${allComments.length - newVisibleCount} remaining)`;
+        thread.appendChild(newSeeMoreBtn);
+      }
+    } catch (err) {
+      console.error('[comments.js] Failed to load more comments:', err);
+    }
+  });
   
   document.addEventListener('click', handleCommentButtonClick);
   document.addEventListener('click', handleCommentSubmit);

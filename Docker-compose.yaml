@@ -91,6 +91,10 @@ services:
             - PHP_API_URL=http://nginx
             - CORS_ORIGIN=*
             - NODE_ENV=production
+            - DB_HOST=db
+            - DB_USER=welinked
+            - DB_PASSWORD=welinked@password
+            - DB_NAME=welinked_db
         depends_on:
             - redis
             - backend

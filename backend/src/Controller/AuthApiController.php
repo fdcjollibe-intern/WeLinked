@@ -13,14 +13,17 @@ class AuthApiController extends AppController
     {
         parent::initialize();
         $this->viewBuilder()->disableAutoLayout();
+        
+        // Ensure API responses are JSON
+        $this->response = $this->response->withType('application/json');
     }
     
     public function beforeFilter(\Cake\Event\EventInterface $event)
     {
         parent::beforeFilter($event);
         
-        // Allow verifyToken to be called without authentication
-        // This is needed for the WebSocket server to validate tokens
+        // Allow verifyToken without authentication
+        // This endpoint is called by the WebSocket server to validate tokens
         $this->Authentication->addUnauthenticatedActions(['verifyToken']);
     }
 

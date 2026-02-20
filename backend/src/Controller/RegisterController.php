@@ -159,7 +159,7 @@ class RegisterController extends AppController
                     'password' => $hashed,
                     'password_hash' => $hashed,
                     'gender' => 'Prefer not to say',
-                    'profile_photo_path' => null,
+                    'profile_photo_path' => 'https://res.cloudinary.com/dn6rffrwk/image/upload/v1771569642/temp-profile_x0tfur.jpg',
                 ]);
 
                 if ($usersTable->save($user)) {
@@ -239,7 +239,7 @@ class RegisterController extends AppController
                         'password' => $hashed,
                         'password_hash' => $hashed,
                         'gender' => 'Prefer not to say',
-                        'profile_photo_path' => null,
+                        'profile_photo_path' => 'https://res.cloudinary.com/dn6rffrwk/image/upload/v1771569642/temp-profile_x0tfur.jpg',
                     ]);
 
                     if ($usersTable->save($user)) {
@@ -269,7 +269,7 @@ class RegisterController extends AppController
         }
 
         $this->viewBuilder()->setLayout('login');
-        $this->render('/Login/index');
+        $this->render('/Register/index');
     }
 
     /**

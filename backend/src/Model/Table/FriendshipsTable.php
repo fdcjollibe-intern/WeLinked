@@ -88,9 +88,7 @@ class FriendshipsTable extends Table {
     public function getFriends(int $userId)
     {
         return $this->find()
-            ->contain(['Following' => function ($q) {
-                return $q->select(['id', 'username', 'full_name', 'profile_photo_path']);
-            }])
+            ->contain(['Following'])
             ->where(['follower_id' => $userId])
             ->orderBy(['Friendships.created_at' => 'DESC']);
     }
@@ -115,6 +113,9 @@ class FriendshipsTable extends Table {
             ->extract('following_id')
             ->toArray();
         
+
+            
+
         $followingIds[] = $userId; // Exclude self
         
         // Get potential suggestions with mutual friends count
@@ -235,9 +236,7 @@ class FriendshipsTable extends Table {
     public function getFollowers(int $userId)
     {
         return $this->find()
-            ->contain(['Followers' => function ($q) {
-                return $q->select(['id', 'username', 'full_name', 'profile_photo_path']);
-            }])
+            ->contain(['Followers'])
             ->where(['following_id' => $userId])
             ->orderBy(['Friendships.created_at' => 'DESC']);
     }

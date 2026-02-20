@@ -73,8 +73,8 @@
 </div>
 
 <!-- Logout Confirmation Modal -->
-<div id="logout-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] px-4">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl transform transition-all">
+<div id="logout-modal" class="hidden fixed inset-0 flex items-center justify-center z-[9999] px-4 pointer-events-none">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl transform transition-all pointer-events-auto">
         <h3 class="text-xl font-semibold text-center mb-2">Confirm Logout</h3>
         <p class="text-gray-600 text-center mb-6">Are you sure you want to log out?</p>
         <div class="flex gap-3">

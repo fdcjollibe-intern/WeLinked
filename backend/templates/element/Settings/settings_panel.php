@@ -254,21 +254,21 @@
                     <?= $this->Form->end() ?>
                 </div>
                 
-                <!-- Two-Factor Authentication -->
+                <!-- View Logged In Devices -->
                 <div>
-                    <h4 class="font-medium text-gray-900 mb-3">Two-Factor Authentication</h4>
+                    <h4 class="font-medium text-gray-900 mb-3">View Logged In Devices</h4>
                     <div class="bg-gray-50 rounded-lg p-4">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-900">Enable 2FA</p>
-                                <p class="text-xs text-gray-600 mt-1">Add an extra layer of security to your account with two-factor authentication</p>
+                                <p class="text-sm font-medium text-gray-900">Device Management</p>
+                                <p class="text-xs text-gray-600 mt-1">See all devices where you're currently logged in and manage your sessions</p>
                             </div>
-                            <button id="toggle-2fa" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
-                                Enable 2FA
+                            <button id="view-devices-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium">
+                                View Devices
                             </button>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-2">Note: This is a basic implementation. In production, you would need proper OTP verification with authenticator apps.</p>
+                    <p class="text-xs text-gray-500 mt-2">You can logout from specific devices or all other devices for security purposes.</p>
                 </div>
             </div>
             <?php endif; ?>
@@ -393,6 +393,80 @@
         <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
             <button type="button" id="cropper-cancel" class="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
             <button type="button" id="cropper-apply" class="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700">Save &amp; Upload</button>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Confirmation Modal -->
+<div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-[60] hidden items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                    <div id="confirm-icon" class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-lg"></i>
+                    </div>
+                </div>
+                <h3 id="confirm-title" class="text-lg font-semibold text-gray-900">Confirm Action</h3>
+            </div>
+        </div>
+        <div class="px-6 py-4">
+            <p id="confirm-message" class="text-gray-600"></p>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+            <button type="button" id="confirm-cancel-btn" class="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+            <button type="button" id="confirm-ok-btn" class="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Device Management Modal -->
+<div id="device-management-modal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 hidden items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Logged In Devices</h3>
+                <p class="text-sm text-gray-500 mt-1">Manage your active sessions across devices</p>
+            </div>
+            <button type="button" id="devices-modal-close" class="text-gray-400 hover:text-gray-600 transition-colors text-xl" aria-label="Close">
+                ✕
+            </button>
+        </div>
+        <div class="flex-1 px-6 py-4 overflow-y-auto">
+            <div id="devices-loading" class="flex items-center justify-center py-12">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <span class="ml-3 text-gray-600">Loading devices...</span>
+            </div>
+            <div id="devices-list" class="hidden space-y-4">
+                <!-- Device items will be populated here -->
+            </div>
+            <div id="devices-error" class="hidden text-center py-12">
+                <div class="text-red-500 mb-2">
+                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                </div>
+                <p class="text-gray-600">Failed to load devices</p>
+                <button id="retry-devices-btn" class="mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">
+                    Try Again
+                </button>
+            </div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100">
+            <div class="flex justify-between items-center">
+                <p class="text-xs text-gray-500">
+                    Sessions expire after 30 days of inactivity
+                </p>
+                <div class="flex gap-3">
+                    <button type="button" id="logout-all-btn" class="px-4 py-2 text-sm font-medium border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        Logout All Other Devices
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -820,36 +894,11 @@
             });
         }
 
-        const twoFaBtn = scope.querySelector('#toggle-2fa');
-        if (twoFaBtn && !twoFaBtn.dataset.bound) {
-            twoFaBtn.dataset.bound = 'true';
-            twoFaBtn.addEventListener('click', async () => {
-                const enabling = twoFaBtn.textContent.trim() === 'Enable 2FA';
-                toggleButtonLoading(twoFaBtn, true, enabling ? 'Enabling...' : 'Disabling...');
-                try {
-                    const endpoint = enabling ? '/settings/enable-two-factor' : '/settings/disable-two-factor';
-                    const response = await fetch(endpoint, buildJsonRequestOptions({}));
-                    const result = await response.json();
-                    if (!response.ok || !result.success) {
-                        showToast(result.message || 'Unable to update 2FA', 'error');
-                    } else {
-                        showToast(result.message || (enabling ? 'Two-factor enabled' : 'Two-factor disabled'));
-                        if (enabling) {
-                            twoFaBtn.textContent = 'Disable 2FA';
-                            twoFaBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-                            twoFaBtn.classList.add('bg-green-500', 'text-white', 'hover:bg-green-600');
-                        } else {
-                            twoFaBtn.textContent = 'Enable 2FA';
-                            twoFaBtn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-                            twoFaBtn.classList.remove('bg-green-500', 'text-white', 'hover:bg-green-600');
-                        }
-                    }
-                } catch (error) {
-                    console.error('2FA toggle error', error);
-                    showToast('An error occurred while updating 2FA', 'error');
-                } finally {
-                    toggleButtonLoading(twoFaBtn, false, enabling ? 'Enable 2FA' : 'Disable 2FA');
-                }
+        const viewDevicesBtn = scope.querySelector('#view-devices-btn');
+        if (viewDevicesBtn && !viewDevicesBtn.dataset.bound) {
+            viewDevicesBtn.dataset.bound = 'true';
+            viewDevicesBtn.addEventListener('click', () => {
+                openDeviceManagementModal();
             });
         }
 
@@ -870,6 +919,392 @@
             });
         }
     };
+
+    // Custom Confirmation Modal Functions
+    const showConfirmModal = (message, title = 'Confirm Action') => {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirm-modal');
+            const titleEl = document.getElementById('confirm-title');
+            const messageEl = document.getElementById('confirm-message');
+            const okBtn = document.getElementById('confirm-ok-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+            
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            const handleOk = () => {
+                cleanup();
+                resolve(true);
+            };
+            
+            const handleCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+            
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                okBtn.removeEventListener('click', handleOk);
+                cancelBtn.removeEventListener('click', handleCancel);
+            };
+            
+            okBtn.addEventListener('click', handleOk);
+            cancelBtn.addEventListener('click', handleCancel);
+            
+            // Close on Escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    handleCancel();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+        });
+    };
+
+    // Device Management Functions
+    const openDeviceManagementModal = () => {
+        const modal = document.getElementById('device-management-modal');
+        const loadingDiv = document.getElementById('devices-loading');
+        const listDiv = document.getElementById('devices-list');
+        const errorDiv = document.getElementById('devices-error');
+        
+        // Reset modal state
+        loadingDiv.classList.remove('hidden');
+        listDiv.classList.add('hidden');
+        errorDiv.classList.add('hidden');
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        
+        // Load devices
+        loadDevices();
+    };
+
+    const closeDeviceManagementModal = () => {
+        const modal = document.getElementById('device-management-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    };
+
+    const loadDevices = async () => {
+        try {
+            const response = await fetch('/api/device-sessions', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': window.csrfToken || window.CSRF_TOKEN
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load devices');
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                displayDevices(result.sessions);
+            } else {
+                throw new Error(result.message || 'Failed to load devices');
+            }
+        } catch (error) {
+            console.error('Error loading devices:', error);
+            showDevicesError();
+        }
+    };
+
+    const displayDevices = (sessions) => {
+        const loadingDiv = document.getElementById('devices-loading');
+        const listDiv = document.getElementById('devices-list');
+        const errorDiv = document.getElementById('devices-error');
+        
+        loadingDiv.classList.add('hidden');
+        errorDiv.classList.add('hidden');
+        
+        // Get current browser's session cookie
+        const currentSessionId = getCookie('welinked_session');
+        console.log('[Device Display] Current browser session ID:', currentSessionId);
+        
+        // Mark current device based on session ID match
+        sessions = sessions.map(session => {
+            const isCurrentDevice = session.session_id === currentSessionId;
+            console.log('[Device Display] Comparing:', {
+                sessionId: session.session_id,
+                currentSessionId: currentSessionId,
+                matches: isCurrentDevice,
+                deviceName: session.device_name
+            });
+            return {
+                ...session,
+                is_current: isCurrentDevice
+            };
+        });
+        
+        // Sort: Current device first, then by last activity
+        sessions.sort((a, b) => {
+            if (a.is_current && !b.is_current) return -1;
+            if (!a.is_current && b.is_current) return 1;
+            return new Date(b.last_activity) - new Date(a.last_activity);
+        });
+        
+        console.log('[Device Display] Sorted sessions with current device first:', sessions);
+        
+        if (sessions.length === 0) {
+            listDiv.innerHTML = '<div class="text-center py-8 text-gray-500">No active sessions found.</div>';
+        } else {
+            listDiv.innerHTML = sessions.map(session => {
+                console.log('[Device Display] Rendering device:', session.device_name, 'is_current:', session.is_current);
+                return createDeviceItem(session);
+            }).join('');
+        }
+        
+        listDiv.classList.remove('hidden');
+        
+        // Bind logout buttons
+        bindDeviceLogoutButtons();
+    };
+    
+    // Helper function to get cookie value
+    const getCookie = (name) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) {
+            const cookieValue = parts.pop().split(';').shift();
+            console.log(`[Cookie] Found ${name}:`, cookieValue);
+            return cookieValue;
+        }
+        console.log(`[Cookie] ${name} not found`);
+        return null;
+    };
+
+    const createDeviceItem = (session) => {
+        const lastActivity = new Date(session.last_activity).toLocaleString();
+        const createdAt = new Date(session.created_at).toLocaleString();
+        
+        return `
+            <div class="border rounded-lg p-4 ${session.is_current ? 'bg-green-50 border-green-400 border-2' : 'bg-white border-gray-200'}">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0 mt-1">
+                            <i class="${session.icon} ${session.is_current ? 'text-green-600' : 'text-gray-400'} text-xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2">
+                                <h4 class="font-medium text-gray-900">${session.device_name}</h4>
+                                ${session.is_current ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">This Device</span>' : ''}
+                            </div>
+                            <div class="mt-1 text-sm text-gray-600 space-y-1">
+                                ${session.browser_name ? `<p><span class="font-medium">Browser:</span> ${session.browser_name} ${session.browser_version || ''}</p>` : ''}
+                                ${session.os_name ? `<p><span class="font-medium">Operating System:</span> ${session.os_name} ${session.os_version || ''}</p>` : ''}
+                                <p><span class="font-medium">Location:</span> ${session.location}</p>
+                                <p><span class="font-medium">Last Activity:</span> ${lastActivity}</p>
+                                <p><span class="font-medium">Signed In:</span> ${createdAt}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0">
+                        ${!session.is_current ? 
+                            `<button type="button" class="logout-device-btn px-3 py-1 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded border border-red-200 hover:border-red-300 transition-colors" data-session-id="${session.session_id}">
+                                <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                            </button>` : 
+                            `<button type="button" class="logout-current-device-btn px-3 py-1 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded border border-red-200 hover:border-red-300 transition-colors" data-session-id="${session.session_id}">
+                                <i class="fas fa-sign-out-alt mr-1"></i>Logout This Device
+                            </button>`
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+    };
+
+    const bindDeviceLogoutButtons = () => {
+        // Bind individual device logout buttons
+        document.querySelectorAll('.logout-device-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const sessionId = e.target.closest('button').dataset.sessionId;
+                const confirmed = await showConfirmModal(
+                    'Are you sure you want to logout from this device? This will end the session on that device.',
+                    'Logout Device'
+                );
+                if (confirmed) {
+                    await logoutDevice(sessionId);
+                }
+            });
+        });
+
+        // Bind current device logout button
+        document.querySelectorAll('.logout-current-device-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const sessionId = e.target.closest('button').dataset.sessionId;
+                const confirmed = await showConfirmModal(
+                    'Are you sure you want to logout from this device? You will be redirected to the login page.',
+                    'Logout This Device'
+                );
+                if (confirmed) {
+                    await logoutCurrentDevice(sessionId);
+                }
+            });
+        });
+
+        // Bind logout all devices button
+        const logoutAllBtn = document.getElementById('logout-all-btn');
+        if (logoutAllBtn) {
+            logoutAllBtn.onclick = async () => {
+                const confirmed = await showConfirmModal(
+                    'Are you sure you want to logout from all other devices? You will remain logged in on this device only.',
+                    'Logout All Devices'
+                );
+                if (confirmed) {
+                    await logoutAllDevices();
+                }
+            };
+        }
+    };
+
+    const logoutCurrentDevice = async (sessionId) => {
+        try {
+            const response = await fetch('/api/device-sessions/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': window.csrfToken || window.CSRF_TOKEN
+                },
+                body: JSON.stringify({ session_id: sessionId, is_current: true })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('Logging out...');
+                // Close modal and redirect to login
+                closeDeviceManagementModal();
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 500);
+            } else {
+                showToast(result.message || 'Failed to logout', 'error');
+            }
+        } catch (error) {
+            console.error('Error logging out current device:', error);
+            showToast('An error occurred while logging out', 'error');
+        }
+    };
+
+    const logoutDevice = async (sessionId) => {
+        try {
+            const response = await fetch('/api/device-sessions/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': window.csrfToken || window.CSRF_TOKEN
+                },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('Device logged out successfully');
+                loadDevices(); // Reload the list
+            } else {
+                showToast(result.message || 'Failed to logout device', 'error');
+            }
+        } catch (error) {
+            console.error('Error logging out device:', error);
+            showToast('An error occurred while logging out device', 'error');
+        }
+    };
+
+    const logoutAllDevices = async () => {
+        try {
+            const response = await fetch('/api/device-sessions/logout-all', {
+                method: 'POST', 
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': window.csrfToken || window.CSRF_TOKEN
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('Logged out from all other devices successfully');
+                loadDevices(); // Reload the list
+            } else {
+                showToast(result.message || 'Failed to logout all devices', 'error');
+            }
+        } catch (error) {
+            console.error('Error logging out all devices:', error);
+            showToast('An error occurred while logging out all devices', 'error');
+        }
+    };
+
+    const showDevicesError = () => {
+        const loadingDiv = document.getElementById('devices-loading');
+        const listDiv = document.getElementById('devices-list');
+        const errorDiv = document.getElementById('devices-error');
+        
+        loadingDiv.classList.add('hidden');
+        listDiv.classList.add('hidden');
+        errorDiv.classList.remove('hidden');
+        
+        // Bind retry button
+        const retryBtn = document.getElementById('retry-devices-btn');
+        if (retryBtn) {
+            retryBtn.onclick = () => {
+                loadingDiv.classList.remove('hidden');
+                errorDiv.classList.add('hidden');
+                loadDevices();
+            };
+        }
+    };
+
+    // Bind modal close button
+    document.addEventListener('DOMContentLoaded', () => {
+        const closeBtn = document.getElementById('devices-modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeDeviceManagementModal();
+            });
+        }
+        
+        // Close modal when clicking outside
+        const modal = document.getElementById('device-management-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeDeviceManagementModal();
+                }
+            });
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('device-management-modal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    closeDeviceManagementModal();
+                }
+            }
+        });
+
+        // Listen for WebSocket session invalidation
+        if (window.socket) {
+            window.socket.on('session_invalidated', (data) => {
+                showToast(data.message || 'Your session has been terminated.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+            });
+        }
+    });
 
     const runInitializers = () => window.initSettingsHandlers(document);
     if (document.readyState === 'loading') {

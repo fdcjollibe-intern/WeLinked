@@ -43,7 +43,7 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/logout', ['controller' => 'Login', 'action' => 'logout']);
         $builder->connect('/dashboard', ['controller' => 'Dashboard', 'action' => 'index']);
         
-        // Reels - short-form vertical videos
+        // Reels 
         $builder->connect('/reels', ['controller' => 'Reels', 'action' => 'index']);
         
         // Settings
@@ -54,6 +54,14 @@ return function (RouteBuilder $routes): void {
         $builder->connect('/settings/upload-profile-photo', ['controller' => 'Settings', 'action' => 'uploadProfilePhoto']);
         $builder->connect('/settings/enable-two-factor', ['controller' => 'Settings', 'action' => 'enableTwoFactor']);
         $builder->connect('/settings/disable-two-factor', ['controller' => 'Settings', 'action' => 'disableTwoFactor']);
+
+        // Device Sessions (for logged in devices management)
+        $builder->connect('/api/device-sessions', ['controller' => 'DeviceSessions', 'action' => 'index'])
+            ->setMethods(['GET']);
+        $builder->connect('/api/device-sessions/logout', ['controller' => 'DeviceSessions', 'action' => 'logoutDevice'])
+            ->setMethods(['POST', 'DELETE']);
+        $builder->connect('/api/device-sessions/logout-all', ['controller' => 'DeviceSessions', 'action' => 'logoutAllDevices'])
+            ->setMethods(['POST']);
 
         // Component endpoints used by the Dashboard to fetch HTML fragments
         $builder->connect('/dashboard/left-sidebar', ['controller' => 'DashboardLeftSidebar', 'action' => 'index']);

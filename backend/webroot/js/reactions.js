@@ -239,8 +239,10 @@
         if (!isComment) {
           updateReactionSummary(element, json.counts || {}, json.user_reaction);
         } else {
-          // Update reaction count for comments
-          updateCommentReactionCount(btn, json.counts || {});
+          // Update reaction summary for comments
+          if (window.updateCommentReactionSummary) {
+            window.updateCommentReactionSummary(element, json.counts || {});
+          }
         }
         
         // Dispatch event for other components (e.g., modals) to listen to

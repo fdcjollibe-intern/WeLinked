@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use WhichBrowser\Parser;
+
 /**
  * Login Controller
  */
@@ -186,6 +188,10 @@ class LoginController extends AppController
                                         }
 
                                         // Return success response immediately
+                                        
+                                        // Track device session for manual fallback
+                                        $this->trackDeviceSession($identityObj['id']);
+                                        
                                         error_log('=== LOGIN REQUEST END (SUCCESS - FALLBACK) ===');
                                         return $this->response
                                             ->withType('application/json')
@@ -240,6 +246,9 @@ class LoginController extends AppController
                         error_log('Password rehash failed: ' . $e->getMessage());
                     }
 
+                    // Track device session
+                    $this->trackDeviceSession($identity->get('id'));
+
                     error_log('=== LOGIN REQUEST END (SUCCESS) ===');
 
                     return $this->response
@@ -281,6 +290,10 @@ class LoginController extends AppController
                 $result = $this->Authentication->getResult();
                 
                 if ($result && $result->isValid()) {
+                    // Track device session for regular form login
+                    $identity = $this->Authentication->getIdentity();
+                    $this->trackDeviceSession($identity->get('id'));
+                    
                     $redirect = $this->request->getQuery('redirect');
                     if (empty($redirect)) {
                         // default to /dashboard
@@ -370,4 +383,98 @@ class LoginController extends AppController
         $this->request->allowMethod(['get', 'post']);
         $this->viewBuilder()->setLayout('login');
     }
-}
+    /**
+     * Track device session on successful login
+     *
+     * @param int $userId User ID
+     * @return void
+     */
+    private function trackDeviceSession(int $userId): void
+    {
+        try {
+            $sessionId = $this->request->getSession()->id();
+            $ipAddress = $this->request->clientIp();
+            $userAgent = $this->request->getHeaderLine('User-Agent');
+            
+            // Debug: Log session details
+            error_log('=== TRACKING DEVICE SESSION ===');
+            error_log('User ID: ' . $userId);
+            error_log('Session ID from PHP: ' . $sessionId);
+            error_log('Session ID length: ' . strlen($sessionId));
+            
+            // Debug: Check all cookies
+            $allCookies = $this->request->getCookieParams();
+            error_log('All cookies: ' . json_encode(array_keys($allCookies)));
+            
+            // Check for welinked_session cookie
+            if (isset($allCookies['welinked_session'])) {
+                error_log('welinked_session cookie value: ' . $allCookies['welinked_session']);
+                error_log('Cookie matches session ID: ' . ($allCookies['welinked_session'] === $sessionId ? 'YES' : 'NO'));
+            } else {
+                error_log('welinked_session cookie NOT FOUND in request');
+            }
+
+            // Parse device information using WhichBrowser
+            $parser = new Parser($userAgent);
+            
+            $deviceInfo = [
+                'device_type' => $this->getDeviceType($parser),
+                'device_name' => $this->getDeviceName($parser),
+                'browser_name' => $parser->browser->name ?? null,
+                'browser_version' => $parser->browser->version->value ?? null,
+                'os_name' => $parser->os->name ?? null,
+                'os_version' => $parser->os->version->value ?? null,
+            ];
+
+            // Create or update session record
+            $userSessionsTable = $this->fetchTable('UserSessions');
+            $result = $userSessionsTable->createOrUpdateSession($userId, $sessionId, $deviceInfo, $ipAddress, $userAgent);
+            
+            if ($result) {
+                error_log('✓ Device session SUCCESSFULLY tracked for user ' . $userId);
+                error_log('Stored session_id in database: ' . $sessionId);
+                error_log('Device info: ' . json_encode($deviceInfo));
+            } else {
+                error_log('✗ FAILED to track device session for user ' . $userId);
+            }
+            error_log('=== END TRACKING DEVICE SESSION ===');
+        } catch (\Throwable $e) {
+            error_log('Failed to track device session: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Determine device type from parser
+     *
+     * @param Parser $parser WhichBrowser parser instance
+     * @return string Device type (desktop, mobile, tablet)
+     */
+    private function getDeviceType(Parser $parser): string
+    {
+        if ($parser->device->type === 'tablet') {
+            return 'tablet';
+        } elseif ($parser->device->type === 'mobile') {
+            return 'mobile';
+        } else {
+            return 'desktop';
+        }
+    }
+
+    /**
+     * Get friendly device name
+     *
+     * @param Parser $parser WhichBrowser parser instance
+     * @return string|null Device name
+     */
+    private function getDeviceName(Parser $parser): ?string
+    {
+        if ($parser->device->model) {
+            return $parser->device->manufacturer . ' ' . $parser->device->model;
+        } elseif ($parser->device->manufacturer) {
+            return $parser->device->manufacturer . ' Device';
+        } elseif ($parser->os->name) {
+            return $parser->os->name . ' Device';
+        }
+        
+        return null;
+    }}

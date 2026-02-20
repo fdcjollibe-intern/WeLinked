@@ -51,7 +51,7 @@ class FriendsController extends AppController
         $followersQuery = $friendshipsTable->getFollowers($currentUserId)->all();
         $followers = [];
         foreach ($followersQuery as $friendship) {
-            $follower = $friendship->followers;
+            $follower = $friendship->follower;
             
             // Skip if follower data is null
             if (!$follower || !$follower->id) {

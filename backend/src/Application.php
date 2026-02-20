@@ -124,8 +124,16 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
      */
     public function getAuthenticationService(\Psr\Http\Message\ServerRequestInterface $request): AuthenticationServiceInterface
     {
+        $uri = $request->getUri()->getPath();
+        $unauthenticatedRedirect = '/login';
+        
+        // Don't redirect API endpoints - return 401 instead
+        if (strpos($uri, '/api/') === 0) {
+            $unauthenticatedRedirect = null;
+        }
+        
         $authenticationService = new AuthenticationService([
-            'unauthenticatedRedirect' => '/login',
+            'unauthenticatedRedirect' => $unauthenticatedRedirect,
             'queryParam' => 'redirect',
         ]);
 
