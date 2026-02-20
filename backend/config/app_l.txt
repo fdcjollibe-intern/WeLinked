@@ -1,0 +1,109 @@
+<?php
+
+use function Cake\Core\env;
+
+return [
+
+    'debug' => filter_var(env('DEBUG', true), FILTER_VALIDATE_BOOLEAN),
+
+
+    'Security' => [
+        'salt' => env('SECURITY_SALT', '269ce9bd98b994e5b3baa433be9dd4bc269ce9bd98b994e5b3baa433be9dd4bc'),
+    ],
+
+    'Cloudinary' => [
+        'cloud_name' => 'dn6rffrwk',
+        'api_key' => '344196553561727', 
+        'api_secret' => 'MbHFiTcNa__FPmA87l8Ey_Sqo4w',
+    ],
+
+    /**
+     * Redis Configuration for Real-time Notifications
+     * Used with WebSocket server for pub/sub messaging
+     */
+    'Redis' => [
+        'host' => env('REDIS_HOST', 'redis'),
+        'port' => (int)env('REDIS_PORT', 6379),
+        'password' => env('REDIS_PASSWORD', null),
+        'database' => (int)env('REDIS_DATABASE', 0),
+        'timeout' => 2.5,
+    ],
+
+    /**
+     * WebSocket Server Configuration
+     */
+    'WebSocket' => [
+        'url' => env('WEBSOCKET_URL', 'http://websocket:3000'),
+        'client_url' => env('WEBSOCKET_CLIENT_URL', 'http://localhost:3000'),
+    ],
+
+   
+    'Session' => [
+        'defaults' => 'php',
+        'timeout' => 120, // Session timeout in minutes
+        'cookie' => 'welinked_session',
+        'cookiePath' => '/',
+        // Session encryption key - prevents cookie tampering
+        'ini' => [
+            'session.cookie_secure' => false, // Set to true when using HTTPS
+            'session.cookie_httponly' => true, // Prevents JavaScript access
+            'session.cookie_samesite' => 'Lax', // CSRF protection
+            'session.use_strict_mode' => true, // Prevents session fixation
+            'session.cookie_lifetime' => 2629800,
+            'session.gc_maxlifetime' => 7200,
+        ],
+        // Encryption key for session data integrity
+        'cookieKey' => env('SESSION_KEY', '1a017cc69ca5ce70ea0564980a6a0bacc96b5d1e0ddb757ee1c99b526c496437'),
+    ],
+
+    /*
+     * Connection information used by the ORM to connect
+     * to your application's datastores.
+     *
+     * See app.php for more configuration options.
+     */
+    'Datasources' => [
+        'default' => [
+            'className' => 'Cake\Database\Connection',
+            'driver' => 'Cake\Database\Driver\Mysql',
+            'persistent' => false,
+            'host' => 'db',
+            'port' => 3306,
+            'username' => 'welinked',
+            'password' => 'welinked@password',
+            'database' => 'welinked_db',
+            'encoding' => 'utf8mb4',
+            'timezone' => 'UTC',
+            'flags' => [],
+            'cacheMetadata' => true,
+            // Enable query logging temporarily to diagnose authentication lookup
+            // issues. This will write SQL queries to the application error log.
+            'log' => true,
+            'url' => env('DATABASE_URL', null),
+        ],
+
+        /*
+         * The test connection is used during the test suite.
+         */
+        'test' => [
+            'host' => 'localhost',
+            //'port' => 'non_standard_port_number',
+            'username' => 'welinked',
+            'password' => 'welinked@!password',
+            'database' => 'test_welinked_db',
+            //'schema' => 'myapp',
+            'url' => env('DATABASE_TEST_URL', 'sqlite://127.0.0.1/tmp/tests.sqlite'),
+        ],
+    ],
+
+    'EmailTransport' => [
+        'default' => [
+            'host' => 'localhost',
+            'port' => 25,
+            'username' => null,
+            'password' => null,
+            'client' => null,
+            'url' => env('EMAIL_TRANSPORT_DEFAULT_URL', null),
+        ],
+    ],
+];
