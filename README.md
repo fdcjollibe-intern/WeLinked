@@ -1,214 +1,220 @@
-# WeLinked
+# WeLinked - Social Media Platform
 
-A LinkedIn-style web application built with **CakePHP 5.3**, **Vue.js 3**, and **MySQL 8.0** using **MVC Architecture**.
+A modern social networking platform with real-time notifications, posts, reels, reactions, comments, and friend connections. Built with CakePHP 5.3, Node.js WebSocket server, and Vue.js.
 
-## 🚀 Tech Stack
+> **Quick Start**: `docker-compose up -d` → Open `http://localhost`
 
-- **Backend**: CakePHP 5.3 (PHP 8.2+)
-- **Frontend**: Vue.js 3 (CDN)
-- **Database**: MySQL 8.0
-- **Web Server**: Nginx
-- **Architecture**: MVC (Model-View-Controller)
+## Tech Stack
 
-## 📁 Project Structure
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | PHP 8.2+ • CakePHP 5.3 • Composer |
+| **Frontend** | Vue.js 3 (CDN) • Socket.io Client |
+| **Database** | MySQL 8.0 |
+| **Real-Time** | Node.js 18+ • Socket.io • Redis 7 |
+| **Infrastructure** | Docker Compose • Nginx • PHP-FPM |
+| **CDN** | Cloudinary |
 
-```
-WeLinked/
-├── Docker-compose.yaml          # Docker orchestration
-├── backend/                     # CakePHP 5.x application
-│   ├── src/
-│   │   ├── Controller/          # Controllers (Business logic)
-│   │   │   ├── AppController.php
-│   │   │   ├── UsersController.php
-│   │   │   ├── LoginController.php
-│   │   │   ├── RegisterController.php
-│   │   │   └── PagesController.php
-│   │   ├── Model/               # Models (Database layer)
-│   │   │   ├── Entity/          # Entity classes
-│   │   │   ├── Table/           # Table classes
-│   │   │   └── Behavior/        # Custom behaviors
-│   │   ├── View/                # View helpers and cells
-│   │   │   ├── AppView.php
-│   │   │   └── AjaxView.php
-│   │   ├── Application.php      # Application bootstrap
-│   │   └── Console/             # CLI commands
-│   ├── templates/               # View templates (Vue.js integration)
-│   │   ├── Login/
-│   │   │   └── index.php        # Vue.js login page
-│   │   ├── Register/
-│   │   │   └── index.php        # Vue.js register page
-│   │   ├── Users/
-│   │   │   └── dashboard.php    # Vue.js dashboard
-│   │   ├── layout/
-│   │   │   ├── default.php      # Main layout with Vue CDN
-│   │   │   ├── login.php        # Login layout
-│   │   │   └── error.php        # Error layout
-│   │   └── element/             # Reusable view elements
-│   ├── config/                  # Configuration files
-│   │   ├── app.php              # Main app config
-│   │   ├── routes.php           # URL routing
-│   │   └── bootstrap.php        # Bootstrap configuration
-│   ├── webroot/                 # Public assets (CSS, JS, images)
-│   │   ├── index.php            # Application entry point
-│   │   └── css/                 # Stylesheets
-│   ├── composer.json            # PHP dependencies
-│   └── logs/                    # Application logs
-├── php/                         # PHP-FPM Docker configuration
-│   ├── Dockerfile               # PHP 8.2-FPM with extensions
-│   └── php.ini                  # PHP settings
-├── nginx/                       # Nginx configuration
-│   └── conf.d/
-│       └── default.conf         # Server config
-└── db/                          # Database setup
-    └── init-db.sql              # Initial schema & test data
-```
+## Features
 
-## 🔧 Setup & Installation
+✅ User authentication (Argon2id)  
+✅ Posts & Reels with media (250MB max)  
+✅ 6 reaction types (like, love, haha, wow, sad, angry)  
+✅ Comments with attachments  
+✅ @mentions with autocomplete  
+✅ Follow/unfollow system  
+✅ Real-time WebSocket notifications  
+✅ Birthday messages  
+✅ Profile management  
+✅ Multi-device sessions  
+✅ Search & suggestions  
 
-### Prerequisites
-- Docker Desktop
+## Prerequisites
+
+- Docker Desktop 20.10+
 - Git
 
-### Quick Start
+## Installation
+
+### Quick Start (Docker)
 
 ```bash
-# 1. Clone the repository
-git clone <repository-url>
+git clone <your-repo-url>
 cd WeLinked
-
-# 2. Start Docker containers
 docker-compose up -d --build
-
-# 3. Wait for containers to initialize (10-15 seconds)
-docker-compose ps
-
-# 4. Access the application
-open http://localhost/login
 ```
 
-## 🔐 Test Accounts
+Access at: **http://localhost**
 
-| Username | Password | Email |
-|----------|----------|-------|
-| admin | password123 | admin@welinked.com |
-| testuser | password123 | test@welinked.com |
+### Configuration
 
-## 📍 Routes
+1. **Backend**: Copy `backend/config/app_local_sample.php` to `app_local.php` and update:
+   - `SECURITY_SALT` - Generate with: `php -r "echo bin2hex(random_bytes(32));"`
+   - Cloudinary credentials (get from [cloudinary.com](https://cloudinary.com))
 
-### Custom Routes (defined in `backend/config/routes.php`)
-- `/` → Login page (default)
-- `/login` → Login page
-- `/register` → Registration page
-- `/dashboard` → User dashboard
-- `/logout` → Logout
+2. **Database**: Auto-initialized on first run from `db/init-db.sql`
 
-### Convention-based Routes (automatic)
-- `/users/dashboard` → Canonical: `/dashboard`
-- `/users/{action}` → UsersController actions
-- `/{controller}/{action}` → Standard CakePHP routing
+3. **Services Running**:
+   - Nginx: http://localhost
+   - MySQL: localhost:3306
+   - Redis: localhost:6379
+   - WebSocket: localhost:3000
 
-## 🏗️ MVC Architecture
-
-### Model (`backend/src/Model/`)
-- **Table classes**: Handle database operations, queries, and associations
-- **Entity classes**: Represent individual database records with validation
-- **Behaviors**: Reusable model functionality
-- Password hashing and data validation
-
-### View (`backend/templates/`)
-- `.php` template files (CakePHP 5.x)
-- Vue.js 3 integrated via CDN
-- Reactive UI components
-- Layouts for consistent page structure
-
-### Controller (`backend/src/Controller/`)
-- Handles HTTP requests and routing
-- Processes business logic
-- Returns JSON for Vue.js AJAX or renders views
-- Authentication and authorization
-
-## 🐳 Docker Services
-
-| Service | Container Name | Port | Description |
-|---------|----------------|------|-------------|
-| nginx | welinked-nginx-1 | 80, 443 | Web server & reverse proxy |
-| backend | welinked-backend | 9000 | PHP 8.2-FPM application server |
-| db | welinked-db | 3306 | MySQL 8.0 database |
-
-## 🛠️ Common Commands
+### Manual Setup (Development)
 
 ```bash
-# View running containers
-docker-compose ps
+# Backend
+cd backend && composer install
+
+# WebSocket
+cd websocket-server && npm install
+
+# Database
+mysql -u root -p < db/init-db.sql
+```
+
+## Essential Commands
+
+```bash
+# Start
+docker-compose up -d
+
+# Stop
+docker-compose down
 
 # View logs
 docker-compose logs -f
 
-# Restart all services
-docker-compose restart
+# Rebuild
+docker-compose up -d --build
 
-# Stop all services
-docker-compose down
+# Run tests
+cd backend && composer test
 
-# Stop and remove volumes (fresh start)
-docker-compose down -v
-
-# Access MySQL database
-docker exec -it welinked-db mysql -uwelinked -p'welinked@password' welinked_db
-
-# Access backend container shell
-docker exec -it welinked-backend sh
+# Access containers
+docker-compose exec backend sh
+docker-compose exec websocket sh
 ```
 
-## 🌐 URLs
+## Project Structure
 
-- **Application**: http://localhost
-- **Login**: http://localhost/login
-- **Dashboard**: http://localhost/dashboard
-- **MySQL**: localhost:3306
-
-## 📝 Development Notes
-
-### Adding New Routes
-Edit `backend/config/routes.php` within the scope function:
-```php
-$builder->connect('/your-route', [
-    'controller' => 'YourController',
-    'action' => 'yourAction'
-]);
+```
+WeLinked/
+├── backend/               # CakePHP 5.3 app
+│   ├── config/           # App config, routes
+│   ├── src/
+│   │   ├── Controller/   # 25 controllers
+│   │   ├── Model/        # Entities, Tables
+│   │   └── Service/      # Business logic
+│   ├── templates/        # Views (CTP)
+│   ├── webroot/          # Public assets
+│   └── composer.json
+├── websocket-server/     # Node.js real-time server
+│   ├── server.js
+│   ├── services/         # Redis, Auth
+│   └── package.json
+├── db/                   # SQL schemas, migrations
+├── nginx/                # Web server config
+├── php/                  # PHP-FPM Dockerfile
+└── Docker-compose.yaml   # 5 services (nginx, backend, db, redis, websocket)
 ```
 
-### Creating New MVC Components
+## Key API Endpoints
 
-**Table (Model)**: `backend/src/Model/Table/YourModelTable.php`
-**Entity**: `backend/src/Model/Entity/YourModel.php`
-**Controller**: `backend/src/Controller/YourController.php`
-**View Template**: `backend/templates/YourController/action.php`
+**Authentication**
+- `POST /login` - Login
+- `POST /register` - Register
+- `GET /logout` - Logout
 
-### Vue.js Integration
-Vue 3 is loaded via CDN in `backend/templates/layout/default.php`. Each view template can create a Vue app instance using the Composition API or Options API.
+**Posts**
+- `GET /dashboard/middle-column` - Get feed
+- `POST /dashboard/posts/create` - Create post
+- `POST /dashboard/posts/edit/{id}` - Edit post
+- `DELETE /dashboard/posts/delete/{id}` - Delete post
 
-### CakePHP 5.x Key Features
-- Modern PHP 8.2+ features (typed properties, attributes)
-- PSR-7 HTTP message implementation
-- Improved authentication with CakePHP Authentication plugin
-- Better dependency injection and service containers
-- Enhanced migration system
+**Social**
+- `POST /dashboard/reactions/react` - React to post/comment
+- `POST /dashboard/comments/create` - Add comment
+- `POST /friends/follow` - Follow user
+- `POST /friends/unfollow` - Unfollow user
 
-## 📦 Database Schema
+**Notifications**
+- `GET /api/notifications` - Get notifications
+- `GET /api/notifications/unread-count` - Unread count
+- `POST /api/notifications/mark-read/{id}` - Mark as read
 
-See `db/init-db.sql` for the current schema. The `users` table is created automatically on first run.
+**Profile**
+- `GET /profile/{username}` - View profile
+- `POST /profile/update` - Update profile
+- `GET /profile/{username}/followers` - Get followers
 
-## 🔒 Security Notes
+**Real-Time**
+- WebSocket: `ws://localhost:3000` (auto-connects)
+- Events: `notification`, `session_invalidated`
 
-- Passwords are hashed using PHP's `password_hash()`
-- Change default passwords in production
-- Update `welinked@password` in `Docker-compose.yaml` for production
+> **Full API docs**: See [backend/config/routes.php](backend/config/routes.php)
 
-## 📚 Resources
+## Database
 
-- [CakePHP 5.x Documentation](https://book.cakephp.org/5/en/index.html)
-- [CakePHP Authentication Plugin](https://book.cakephp.org/authentication/3/en/index.html)
-- [Vue.js 3 Documentation](https://vuejs.org/)
-- [MySQL 8.0 Reference](https://dev.mysql.com/doc/refman/8.0/en/)
-- [PHP 8.2 Documentation](https://www.php.net/releases/8.2/en.php)
+**Core Tables**: users, posts, comments, reactions, friendships, notifications, mentions, birthday_messages, user_sessions, post_attachments, comment_attachments
+
+**Key Features**:
+- Argon2id password hashing
+- Soft deletes with `deleted_at`
+- Foreign keys with CASCADE
+- Indexed for performance
+- UTF8MB4 support
+
+## Real-Time Notifications
+
+**Architecture**: Socket.io + Redis Pub/Sub
+
+```
+User Action → CakePHP → Redis Pub/Sub → WebSocket Server → Client
+```
+
+**Client Events**: `notification`, `session_invalidated`, `authenticated`  
+**Fallback**: Auto-polling every 30s if WebSocket fails  
+**Health Check**: `GET http://localhost:3000/health`
+
+## Security
+
+- **Passwords**: Argon2id hashing with auto-rehashing
+- **Sessions**: HttpOnly, SameSite=Lax, 120min timeout
+- **CSRF**: SameSite cookies, FormProtection available
+- **SQL Injection**: CakePHP ORM (parameterized queries)
+- **XSS**: Auto-escaping in templates, HttpOnly cookies
+- **Files**: Type validation, size limits (250MB), CDN storage
+- **Secrets**: `app_local.php` gitignored
+
+**Generate Salt**: `php -r "echo bin2hex(random_bytes(32));"`
+
+## Contributing
+
+```bash
+# Create branch
+git checkout -b feature/your-feature
+
+# Make changes, then run checks
+cd backend
+composer cs-check       # Code standards
+composer test           # Tests
+
+# Commit (use conventional commits)
+git commit -m "feat: add feature"
+git commit -m "fix: resolve bug"
+git commit -m "docs: update readme"
+
+# Push and create PR
+git push origin feature/your-feature
+```
+
+## License
+
+MIT License. See project for full text.
+
+---
+
+**Documentation**: See `BIRTHDAY_FEATURE_COMPLETE.md`, `WEBSOCKET_SETUP_COMPLETE.md`, `CLOUDINARY_SETUP.md` for feature-specific guides.
+
+**Resources**: [CakePHP 5](https://book.cakephp.org/5/) • [Socket.io](https://socket.io/docs/) • [Docker](https://docs.docker.com/) • [Vue.js 3](https://vuejs.org/)

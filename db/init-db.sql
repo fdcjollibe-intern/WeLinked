@@ -2,8 +2,8 @@
 -- WeLinked Database - Complete Schema
 -- ============================================
 -- Description: Social media platform database schema
--- Version: 1.0
--- Last Updated: 2026-02-12
+-- Version: 2.0
+-- Last Updated: 2026-02-23
 -- ============================================
 
 -- Drop database if exists and create fresh
@@ -27,10 +27,15 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     profile_photo_path VARCHAR(255) NULL,
     gender ENUM('Male', 'Female', 'Prefer not to say') NOT NULL DEFAULT 'Prefer not to say',
+    bio VARCHAR(180) NULL,
+    website VARCHAR(180) NULL,
+    birthdate DATE NULL,
+    is_birthday_public TINYINT(1) NOT NULL DEFAULT 0,
     theme_preference ENUM('system', 'light', 'dark') NOT NULL DEFAULT 'system',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_users_username (username)
+    INDEX idx_users_username (username),
+    INDEX idx_users_birthdate (birthdate)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
@@ -196,7 +201,9 @@ CREATE TABLE IF NOT EXISTS notifications (
     
     INDEX idx_notifications_user_read (user_id, is_read, created_at DESC),
     INDEX idx_notifications_type (type),
-    INDEX idx_notifications_target (target_type, target_id)
+    INDEX idx_notifications_target (target_type, target_id),
+    INDEX idx_notifications_actor_target (actor_id, type, target_type, target_id),
+    INDEX idx_notifications_type_target_actor (type, target_type, target_id, actor_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
@@ -302,6 +309,72 @@ CREATE TABLE IF NOT EXISTS activities (
     INDEX idx_activities_user (user_id, created_at DESC),
     INDEX idx_activities_is_read (user_id, is_read),
     INDEX idx_activities_type (activity_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- Table: birthday_messages
+-- Description: Stores birthday messages sent between users
+-- ============================================
+CREATE TABLE IF NOT EXISTS birthday_messages (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    sender_id BIGINT UNSIGNED NOT NULL,
+    recipient_id BIGINT UNSIGNED NOT NULL,
+    message TEXT NOT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
+    
+    CONSTRAINT fk_birthday_messages_sender
+        FOREIGN KEY (sender_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    
+    CONSTRAINT fk_birthday_messages_recipient
+        FOREIGN KEY (recipient_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    
+    INDEX idx_birthday_messages_recipient (recipient_id, deleted_at),
+    INDEX idx_birthday_messages_sender (sender_id, deleted_at),
+    INDEX idx_birthday_messages_created (created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- Table: user_sessions
+-- Description: Track user device sessions for login management
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    session_id VARCHAR(40) NOT NULL,
+    websocket_id VARCHAR(255) NULL,
+    device_type ENUM('desktop', 'mobile', 'tablet') NOT NULL DEFAULT 'desktop',
+    device_name VARCHAR(100) NULL,
+    browser_name VARCHAR(50) NULL,
+    browser_version VARCHAR(20) NULL,
+    os_name VARCHAR(50) NULL,
+    os_version VARCHAR(20) NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    user_agent TEXT NOT NULL,
+    country VARCHAR(100) NULL,
+    city VARCHAR(100) NULL,
+    is_current BOOLEAN NOT NULL DEFAULT FALSE,
+    last_activity DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT fk_user_sessions_user_id
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    
+    INDEX idx_user_sessions_user_id (user_id),
+    INDEX idx_user_sessions_session_id (session_id),
+    INDEX idx_user_sessions_websocket_id (websocket_id),
+    INDEX idx_user_sessions_last_activity (last_activity),
+    INDEX idx_user_sessions_user_activity (user_id, last_activity DESC),
+    
+    UNIQUE KEY unique_session (session_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================

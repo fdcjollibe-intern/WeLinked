@@ -7,7 +7,7 @@
 #
 # Host: 127.0.0.1 (MySQL 8.0.45)
 # Database: welinked_db
-# Generation Time: 2026-02-20 10:00:45 +0000
+# Generation Time: 2026-02-23 06:11:55 +0000
 # ************************************************************
 
 
@@ -65,7 +65,7 @@ CREATE TABLE `birthday_messages` (
   KEY `idx_birthday_messages_created` (`created_at` DESC),
   CONSTRAINT `fk_birthday_messages_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_birthday_messages_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `birthday_messages` WRITE;
 /*!40000 ALTER TABLE `birthday_messages` DISABLE KEYS */;
@@ -74,7 +74,7 @@ INSERT INTO `birthday_messages` (`id`, `sender_id`, `recipient_id`, `message`, `
 VALUES
 	(10,1,2,'wassup yo bithc',1,'2026-02-19 09:31:49','2026-02-19 09:32:07',NULL),
 	(11,2,1,'waduuppps',1,'2026-02-20 04:00:02','2026-02-20 04:01:24',NULL),
-	(12,1,2,'ddfgdhdfgfd',0,'2026-02-19 08:08:31','2026-02-19 08:08:31',NULL),
+	(12,1,2,'ddfgdhdfgfd',1,'2026-02-19 08:08:31','2026-02-23 01:47:25',NULL),
 	(13,53,1,'hello happy borthday',1,'2026-02-20 08:20:46','2026-02-20 08:21:41',NULL);
 
 /*!40000 ALTER TABLE `birthday_messages` ENABLE KEYS */;
@@ -124,7 +124,7 @@ CREATE TABLE `comments` (
   KEY `idx_comments_deleted_at` (`deleted_at`),
   CONSTRAINT `fk_comments_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_comments_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `comments` WRITE;
 /*!40000 ALTER TABLE `comments` DISABLE KEYS */;
@@ -161,7 +161,7 @@ CREATE TABLE `friendships` (
   KEY `idx_friendships_follower_created` (`follower_id`,`created_at` DESC),
   CONSTRAINT `fk_friendships_follower` FOREIGN KEY (`follower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_friendships_following` FOREIGN KEY (`following_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `friendships` WRITE;
 /*!40000 ALTER TABLE `friendships` DISABLE KEYS */;
@@ -174,7 +174,6 @@ VALUES
 	(27,2,24,'2026-02-19 09:33:17'),
 	(28,2,26,'2026-02-19 09:33:17'),
 	(29,2,28,'2026-02-19 09:33:18'),
-	(30,2,27,'2026-02-19 09:33:19'),
 	(31,2,25,'2026-02-19 09:33:19'),
 	(32,1,24,'2026-02-20 03:42:09'),
 	(33,1,26,'2026-02-20 03:42:10'),
@@ -225,7 +224,7 @@ CREATE TABLE `mentions` (
   CONSTRAINT `fk_mentions_mentioned_by_user` FOREIGN KEY (`mentioned_by_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_mentions_mentioned_user` FOREIGN KEY (`mentioned_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_mentions_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `mentions` WRITE;
 /*!40000 ALTER TABLE `mentions` DISABLE KEYS */;
@@ -260,7 +259,7 @@ CREATE TABLE `notifications` (
   KEY `idx_notifications_actor_target` (`actor_id`,`type`,`target_type`,`target_id`),
   CONSTRAINT `fk_notifications_actor` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=70 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `notifications` WRITE;
 /*!40000 ALTER TABLE `notifications` DISABLE KEYS */;
@@ -277,7 +276,8 @@ VALUES
 	(65,53,1,'comment','post',331,'jdabsofficial commented on your post',0,'2026-02-19 08:16:52'),
 	(66,53,1,'mention','post',332,'jdabsofficial mentioned you in a post',1,'2026-02-20 08:24:22'),
 	(67,1,53,'reaction','comment',45,'sirdong reacted 😲 to your comment',0,'2026-02-20 09:40:42'),
-	(68,1,53,'comment','post',332,'sirdong commented on your post',0,'2026-02-20 09:41:07');
+	(68,1,53,'comment','post',332,'sirdong commented on your post',0,'2026-02-20 09:41:07'),
+	(69,27,2,'reaction','post',112,'shanegambs reacted 😲 to your post',0,'2026-02-23 01:47:46');
 
 /*!40000 ALTER TABLE `notifications` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -302,7 +302,7 @@ CREATE TABLE `post_attachments` (
   KEY `idx_post_attachments_order` (`post_id`,`display_order`),
   KEY `idx_post_attachments_status` (`upload_status`),
   CONSTRAINT `fk_post_attachments_post` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=102 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `post_attachments` WRITE;
 /*!40000 ALTER TABLE `post_attachments` DISABLE KEYS */;
@@ -316,7 +316,10 @@ VALUES
 	(95,330,'/uploads/attachments/posts/att_6996c5e3ad51e2.38846119.jpg','image',13809,0,'completed','2026-02-19 08:12:23'),
 	(96,330,'/uploads/attachments/posts/att_6996c5e4d05885.73943538.jpg','image',14917,1,'completed','2026-02-19 08:12:23'),
 	(97,330,'/uploads/attachments/posts/att_6996c5e611e984.21692536.jpg','image',31722,2,'completed','2026-02-19 08:12:23'),
-	(98,331,'/uploads/attachments/posts/att_6996c6989c8372.80192319.mp4','video',7016888,0,'completed','2026-02-19 08:15:23');
+	(98,331,'/uploads/attachments/posts/att_6996c6989c8372.80192319.mp4','video',7016888,0,'completed','2026-02-19 08:15:23'),
+	(99,334,'https://res.cloudinary.com/dn6rffrwk/image/upload/v1771813634/posts/user_53_bcea2c0f8c840477ebafdaad.png','image',7261,0,'completed','2026-02-23 02:27:16'),
+	(100,335,'https://res.cloudinary.com/dn6rffrwk/video/upload/v1771813657/posts/user_53_c387209fc1ea5817afedb806.mp4','video',2784710,0,'completed','2026-02-23 02:27:49'),
+	(101,336,'https://res.cloudinary.com/dn6rffrwk/video/upload/v1771813694/posts/user_53_4dffee77eb16a3648728dc8b.mp4','video',7196967,0,'completed','2026-02-23 02:28:46');
 
 /*!40000 ALTER TABLE `post_attachments` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -344,7 +347,7 @@ CREATE TABLE `posts` (
   KEY `idx_posts_user_created` (`user_id`,`created_at` DESC),
   KEY `idx_posts_deleted_created` (`deleted_at`,`created_at` DESC),
   CONSTRAINT `fk_posts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=337 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `posts` WRITE;
 /*!40000 ALTER TABLE `posts` DISABLE KEYS */;
@@ -547,7 +550,10 @@ VALUES
 	(330,1,'','/uploads/attachments/posts/att_6996c5e3ad51e2.38846119.jpg',NULL,'2026-02-19 08:12:23','2026-02-19 08:12:23',NULL,NULL),
 	(331,53,'test post ','/uploads/attachments/posts/att_6996c6989c8372.80192319.mp4',NULL,'2026-02-19 08:15:22','2026-02-19 08:15:23',NULL,1),
 	(332,1,'hello @sirdong ',NULL,NULL,'2026-02-20 08:24:21','2026-02-20 08:24:21',NULL,NULL),
-	(333,53,'<script>alert(1);</script>',NULL,NULL,'2026-02-20 08:31:40','2026-02-20 08:31:40',NULL,NULL);
+	(333,53,'<script>alert(1);</script>',NULL,NULL,'2026-02-20 08:31:40','2026-02-20 08:31:40',NULL,NULL),
+	(334,53,'','https://res.cloudinary.com/dn6rffrwk/image/upload/v1771813634/posts/user_53_bcea2c0f8c840477ebafdaad.png',NULL,'2026-02-23 02:27:16','2026-02-23 02:27:16',NULL,0),
+	(335,53,'#fyp #viral','https://res.cloudinary.com/dn6rffrwk/video/upload/v1771813657/posts/user_53_c387209fc1ea5817afedb806.mp4',NULL,'2026-02-23 02:27:49','2026-02-23 02:27:49',NULL,1),
+	(336,53,'hello','https://res.cloudinary.com/dn6rffrwk/video/upload/v1771813694/posts/user_53_4dffee77eb16a3648728dc8b.mp4',NULL,'2026-02-23 02:28:46','2026-02-23 02:28:46',NULL,1);
 
 /*!40000 ALTER TABLE `posts` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -572,7 +578,7 @@ CREATE TABLE `reactions` (
   KEY `idx_reactions_user` (`user_id`),
   KEY `idx_reactions_type` (`target_type`,`target_id`,`reaction_type`),
   CONSTRAINT `fk_reactions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=850 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `reactions` WRITE;
 /*!40000 ALTER TABLE `reactions` DISABLE KEYS */;
@@ -1061,9 +1067,35 @@ VALUES
 	(845,53,'post',331,'wow','2026-02-19 08:16:13','2026-02-19 08:16:15'),
 	(846,53,'comment',47,'sad','2026-02-19 08:16:24','2026-02-19 08:16:24'),
 	(847,53,'comment',45,'wow','2026-02-20 09:40:42','2026-02-20 09:40:42'),
-	(848,53,'comment',50,'sad','2026-02-20 09:41:10','2026-02-20 09:41:10');
+	(848,53,'comment',50,'sad','2026-02-20 09:41:10','2026-02-20 09:41:10'),
+	(849,2,'post',112,'wow','2026-02-23 01:47:45','2026-02-23 01:47:45');
 
 /*!40000 ALTER TABLE `reactions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+
+# Dump of table sessions
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `sessions`;
+
+CREATE TABLE `sessions` (
+  `id` char(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `created` datetime DEFAULT CURRENT_TIMESTAMP,
+  `modified` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `data` blob,
+  `expires` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+LOCK TABLES `sessions` WRITE;
+/*!40000 ALTER TABLE `sessions` DISABLE KEYS */;
+
+INSERT INTO `sessions` (`id`, `created`, `modified`, `data`, `expires`)
+VALUES
+	(X'3438386137303931393365383133616261333332363230346131363238346232','2026-02-20 07:40:40','2026-02-20 07:40:40',NULL,1771580440);
+
+/*!40000 ALTER TABLE `sessions` ENABLE KEYS */;
 UNLOCK TABLES;
 
 
@@ -1098,7 +1130,7 @@ CREATE TABLE `user_sessions` (
   KEY `idx_user_sessions_last_activity` (`last_activity`),
   KEY `idx_user_sessions_user_activity` (`user_id`,`last_activity` DESC),
   CONSTRAINT `fk_user_sessions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `user_sessions` WRITE;
 /*!40000 ALTER TABLE `user_sessions` DISABLE KEYS */;
@@ -1106,11 +1138,13 @@ LOCK TABLES `user_sessions` WRITE;
 INSERT INTO `user_sessions` (`id`, `user_id`, `session_id`, `websocket_id`, `device_type`, `device_name`, `browser_name`, `browser_version`, `os_name`, `os_version`, `ip_address`, `user_agent`, `country`, `city`, `is_current`, `last_activity`, `created_at`)
 VALUES
 	(9,1,'e90ddd9808d6ed1440e4421018c90768',NULL,'desktop','Apple Macintosh','Firefox','148.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:148.0) Gecko/20100101 Firefox/148.0',NULL,NULL,0,'2026-02-20 08:00:02','2026-02-20 08:00:02'),
-	(11,2,'6ba3e31fb19d6c41d6335918719a27a8',NULL,'desktop','Apple Macintosh','Chrome','145.0.0.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',NULL,NULL,1,'2026-02-19 08:10:02','2026-02-19 08:10:02'),
+	(11,2,'6ba3e31fb19d6c41d6335918719a27a8',NULL,'desktop','Apple Macintosh','Chrome','145.0.0.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',NULL,NULL,0,'2026-02-19 08:10:02','2026-02-19 08:10:02'),
 	(12,1,'d8ada297a4455b75ca664e0b25440509',NULL,'desktop','Apple Macintosh','Firefox','148.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:148.0) Gecko/20100101 Firefox/148.0',NULL,NULL,0,'2026-02-20 08:19:03','2026-02-20 08:19:03'),
 	(13,53,'bb69f3cac7174b62f4efa5619fb89629',NULL,'desktop','Apple Macintosh','Chrome','145.0.0.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',NULL,NULL,0,'2026-02-20 08:20:10','2026-02-20 08:20:10'),
-	(14,53,'e8777b36dba34c03530649ab78105816',NULL,'desktop','Apple Macintosh','Chrome','145.0.0.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',NULL,NULL,1,'2026-02-20 08:48:07','2026-02-20 08:48:07'),
-	(15,1,'429e4ac433ce64a492a46f4150cf3906',NULL,'desktop','Apple Macintosh','Firefox','148.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:148.0) Gecko/20100101 Firefox/148.0',NULL,NULL,1,'2026-02-20 09:19:54','2026-02-20 09:19:54');
+	(14,53,'e8777b36dba34c03530649ab78105816',NULL,'desktop','Apple Macintosh','Chrome','145.0.0.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',NULL,NULL,0,'2026-02-20 08:48:07','2026-02-20 08:48:07'),
+	(15,1,'429e4ac433ce64a492a46f4150cf3906',NULL,'desktop','Apple Macintosh','Firefox','148.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:148.0) Gecko/20100101 Firefox/148.0',NULL,NULL,1,'2026-02-20 09:19:54','2026-02-20 09:19:54'),
+	(16,2,'5c8c36c93d0c3f085d514edcbd5a4ef8',NULL,'desktop','Apple Macintosh','Firefox','148.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:148.0) Gecko/20100101 Firefox/148.0',NULL,NULL,0,'2026-02-23 01:36:51','2026-02-23 01:36:52'),
+	(17,53,'533177330d4262a2f01af2de64c676df',NULL,'desktop','Apple Macintosh','Chrome','145.0.0.0','OS X',NULL,'192.168.65.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',NULL,NULL,1,'2026-02-23 02:27:06','2026-02-23 02:27:06');
 
 /*!40000 ALTER TABLE `user_sessions` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -1141,7 +1175,7 @@ CREATE TABLE `users` (
   KEY `idx_users_username` (`username`),
   KEY `idx_users_gender` (`gender`),
   KEY `idx_users_birthdate` (`birthdate`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=54 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
@@ -1149,7 +1183,7 @@ LOCK TABLES `users` WRITE;
 INSERT INTO `users` (`id`, `full_name`, `username`, `email`, `password_hash`, `profile_photo_path`, `gender`, `birthdate`, `is_birthday_public`, `bio`, `website`, `created_at`, `updated_at`)
 VALUES
 	(1,'Jollibe Dablo','jdabsofficial','jrons.theblue@gmail.com','$argon2id$v=19$m=65536,t=4,p=1$SDJDekN4TFppazVPOHJNLg$a+FhkFRY/4HortquKTnWRoWNMzSyicezsp7b0MM1DBw','https://res.cloudinary.com/dn6rffrwk/image/upload/v1771319664/profilephotos/user_1_d467634d3c6259ab.jpg','Male','2026-02-20',1,'Dream big, move with purpose, and stay grounded. ✨ ','https://github.com/fdcjollibe-intern/','2026-02-12 06:02:04','2026-02-20 04:00:51'),
-	(2,'Shane Gamboa','shanegambs','rons.theblue@gmail.com','$argon2id$v=19$m=65536,t=4,p=1$VVdFdlQxQXZjdmtIdVR0Sw$GLcMKqB4S/upz7OUQjE770c6h1F52JgJyj3rHCf9u3U','https://res.cloudinary.com/dn6rffrwk/image/upload/v1771396171/profilephotos/user_2_324ceb7dd024aeaf.png','Male','2026-02-19',1,'Level-headed strategist with a joystick in hand.','','2026-02-13 01:20:52','2026-02-19 05:34:51'),
+	(2,'Shane Gamboa','shanegambs','rons.theblue@gmail.com','$argon2id$v=19$m=65536,t=4,p=1$VVdFdlQxQXZjdmtIdVR0Sw$GLcMKqB4S/upz7OUQjE770c6h1F52JgJyj3rHCf9u3U','https://res.cloudinary.com/dn6rffrwk/image/upload/v1771396171/profilephotos/user_2_324ceb7dd024aeaf.png','Female','2026-02-19',1,'Level-headed strategist with a joystick in hand.','','2026-02-13 01:20:52','2026-02-23 01:48:50'),
 	(3,'JDabs The Great','jshawttyyy_','jdabs.inquiries@gmail.com','$argon2id$v=19$m=65536,t=4,p=1$L0FkdFpaSVFMZGJkV09vSg$QFOEJumxK+d6t2/CE5cQirofNdLTa93qXkwyeiI9alc',NULL,'Prefer not to say',NULL,0,NULL,NULL,'2026-02-13 07:35:05','2026-02-13 07:35:05'),
 	(4,'Cedrick Buster','cedricktaposnapo','cedrick@gmail.com','$argon2id$v=19$m=65536,t=4,p=1$SDJDekN4TFppazVPOHJNLg$a+FhkFRY/4HortquKTnWRoWNMzSyicezsp7b0MM1DBw',NULL,'Prefer not to say',NULL,0,NULL,NULL,'2026-02-18 02:05:55','2026-02-18 06:40:15'),
 	(24,'Marcus Reed','marcuscodes','marcus@example.com','$argon2id$v=19$m=65536,t=4,p=1$SDJDekN4TFppazVPOHJNLg$a+FhkFRY/4HortquKTnWRoWNMzSyicezsp7b0MM1DBw','https://randomuser.me/api/portraits/men/32.jpg','Male','1998-06-12',1,'Backend dev. Coffee addict. Scaling things that break.','https://marcus.dev','2026-02-19 09:28:00',NULL),
@@ -1181,7 +1215,7 @@ VALUES
 	(50,'Andrew Lopez','andrewlopez','andrew.lopez@example.com','$argon2id$v=19$m=65536,t=4,p=1$SDJDekN4TFppazVPOHJNLg$a+FhkFRY/4HortquKTnWRoWNMzSyicezsp7b0MM1DBw','https://randomuser.me/api/portraits/men/90.jpg','Male','1995-02-07',0,'Building scalable microservices.',NULL,'2025-10-18 03:09:32',NULL),
 	(51,'Sophia Harris','sophiaharris','sophia.harris@example.com','$argon2id$v=19$m=65536,t=4,p=1$SDJDekN4TFppazVPOHJNLg$a+FhkFRY/4HortquKTnWRoWNMzSyicezsp7b0MM1DBw','https://randomuser.me/api/portraits/women/88.jpg','Female','1998-08-08',0,'Frontend architect and design enthusiast.',NULL,'2026-01-11 03:09:32',NULL),
 	(52,'Shane Dumps','shanegambs1','shanegambs1@gmail.com','$argon2id$v=19$m=65536,t=4,p=1$eEN4OVZ0SWZWYXdmTTF6cw$uwsTwRDP5Z+NcyQMVnysrRPSpObnRKaZaABSxtYV4gU','https://res.cloudinary.com/dn6rffrwk/image/upload/v1771569642/temp-profile_x0tfur.jpg','Prefer not to say',NULL,0,NULL,NULL,'2026-02-20 06:32:38','2026-02-20 06:41:24'),
-	(53,'MR Dong','sirdong','sirdong@gmail.com','$argon2id$v=19$m=65536,t=4,p=1$MlBtM0g2WVNJTXNIZTNMQw$bqloJrmscEA5e/yimwCtzq8xIE3t/tic/c/ZuIWa1OE','https://res.cloudinary.com/dn6rffrwk/image/upload/v1771575739/profilephotos/user_53_764a2b3a7ceb0c72.jpg','Prefer not to say',NULL,0,NULL,NULL,'2026-02-19 08:13:49','2026-02-20 08:22:20');
+	(53,'MR Dong','sirdong','sirdong@gmail.com','$argon2id$v=19$m=65536,t=4,p=1$MlBtM0g2WVNJTXNIZTNMQw$bqloJrmscEA5e/yimwCtzq8xIE3t/tic/c/ZuIWa1OE','https://res.cloudinary.com/dn6rffrwk/image/upload/v1771814373/profilephotos/user_53_a08fe35c8cbac62e.jpg','Male',NULL,0,NULL,NULL,'2026-02-19 08:13:49','2026-02-23 02:39:33');
 
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
