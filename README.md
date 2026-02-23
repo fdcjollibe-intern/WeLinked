@@ -1,6 +1,6 @@
 # WeLinked - Social Media Platform
 
-A modern social networking platform with real-time notifications, posts, reels, reactions, comments, and friend connections. Built with CakePHP 5.3, Node.js WebSocket server, and Vue.js.
+A modern social media platform with real-time notifications, posts, reels, reactions, comments, and friend connections. Built with CakePHP 5.3, Node.js WebSocket server, and Vue.js.
 
 > **Quick Start**: `docker-compose up -d` → Open `http://localhost`
 
