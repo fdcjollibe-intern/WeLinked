@@ -39,7 +39,7 @@ A modern social media platform with real-time notifications, posts, reels, react
 ### Quick Start (Docker)
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/fdcjollibe-intern/WeLinked
 cd WeLinked
 docker-compose up -d --build
 ```
