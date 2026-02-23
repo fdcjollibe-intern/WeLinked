@@ -8,7 +8,7 @@ A modern social networking platform with real-time notifications, posts, reels, 
 
 | Layer | Technology |
 |-------|-----------|
-| **Backend** | PHP 8.2+ • CakePHP 5.3 • Composer |
+| **Backend** | PHP 8.2+ • CakePHP 5.3 • Composer  |
 | **Frontend** | Vue.js 3 (CDN) • Socket.io Client |
 | **Database** | MySQL 8.0 |
 | **Real-Time** | Node.js 18+ • Socket.io • Redis 7 |
@@ -31,7 +31,7 @@ A modern social networking platform with real-time notifications, posts, reels, 
 
 ## Prerequisites
 
-- Docker Desktop 20.10+
+- Docker  Desktop 20.10+
 - Git
 
 ## Installation
