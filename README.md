@@ -189,25 +189,6 @@ User Action → CakePHP → Redis Pub/Sub → WebSocket Server → Client
 
 **Generate Salt**: `php -r "echo bin2hex(random_bytes(32));"`
 
-## Contributing
-
-```bash
-# Create branch
-git checkout -b feature/your-feature
-
-# Make changes, then run checks
-cd backend
-composer cs-check       # Code standards
-composer test           # Tests
-
-# Commit (use conventional commits)
-git commit -m "feat: add feature"
-git commit -m "fix: resolve bug"
-git commit -m "docs: update readme"
-
-# Push and create PR
-git push origin feature/your-feature
-```
 
 ## License
 
