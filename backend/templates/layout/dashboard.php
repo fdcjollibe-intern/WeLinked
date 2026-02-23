@@ -105,22 +105,15 @@
         <!-- Right: User actions -->
         <div class="flex items-center space-x-4">
             <!-- Notifications Bell -->
-            <div class="relative">
+            <div class="relative flex items-center space-x-2">
                 <button id="notifications-bell" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors relative">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                     </svg>
                     <span id="notifications-badge" class="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
                 </button>
+                <span class="text-gray-700 font-medium text-sm">Notification</span>
             </div>
-            <button id="theme-toggle" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
-                <svg id="theme-icon-sun" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1m-16 0H1m15.364 1.636l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-                </svg>
-                <svg id="theme-icon-moon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M21.64 15.95c-.18-.81-.46-1.58-.84-2.29.58-.45 1.13-.9 1.62-1.44-.09.83-.3 1.64-.63 2.41.25-.32.47-.68.64-1.07-.38.88-.9 1.68-1.54 2.39.07-.36.12-.72.12-1.09-.59.23-1.2.42-1.81.59.03-.05.07-.1.1-.15-.67.55-1.42 1.03-2.24 1.39.25-.03.5-.1.75-.18-.5.84-1.27 1.55-2.17 2.06.01.23.02.45.02.68 0 .59-.03 1.17-.1 1.75 1.5-1.22 2.77-2.95 3.37-4.96zm-9.28 9.28c.15.12.3.25.43.39 2.04-1.22 3.81-2.95 5.05-5 .28-.51.54-1.04.76-1.59-.97 1.96-2.5 3.64-4.38 4.8.14.17.29.33.44.48z"/>
-                </svg>
-            </button>
             <!-- Profile Avatar with gradient border -->
             <div class="relative">
                 <div class="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
@@ -169,12 +162,6 @@
             <button aria-label="Search" class="p-2 rounded-md text-gray-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-            </button>
-            <!-- Message bubble icon -->
-            <button aria-label="Messages" class="p-2 rounded-md text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8-1.45 0-2.83-.27-4.065-.76L3 21l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                 </svg>
             </button>
         </div>

@@ -348,51 +348,51 @@
 
 <!-- Cropper Modal -->
 <div id="photo-cropper-modal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 hidden items-center justify-center px-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h3 class="text-lg font-semibold text-gray-900">Adjust Profile Photo</h3>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+            <h3 class="text-base font-semibold text-gray-900">Adjust Profile Photo</h3>
             <button type="button" id="cropper-close" class="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
                 ✕
             </button>
         </div>
-        <div class="px-6 py-4 space-y-4">
-            <div class="bg-gray-50 rounded-xl border border-dashed border-gray-200 p-4 min-h-[320px] flex items-center justify-center overflow-hidden">
-                <img id="cropper-source" src="" alt="Crop preview" class="max-h-[70vh]">
+        <div class="px-5 py-3 space-y-3">
+            <div class="bg-gray-50 rounded-xl border border-dashed border-gray-200 p-3 min-h-[280px] max-h-[380px] flex items-center justify-center overflow-hidden">
+                <img id="cropper-source" src="" alt="Crop preview" class="max-h-[350px] max-w-full">
             </div>
-            <div class="flex flex-wrap gap-2 justify-center" id="cropper-controls">
-                <button type="button" data-crop-action="zoom-in" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Zoom In">
-                    <span class="material-symbols-outlined" style="font-size:20px">zoom_in</span>
-                    Zoom In
+            <div class="flex flex-wrap gap-1.5 justify-center" id="cropper-controls">
+                <button type="button" data-crop-action="zoom-in" class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-xs font-medium flex items-center gap-1" title="Zoom In">
+                    <span class="material-symbols-outlined" style="font-size:16px">zoom_in</span>
+                    <span class="hidden sm:inline">Zoom In</span>
                 </button>
-                <button type="button" data-crop-action="zoom-out" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Zoom Out">
-                    <span class="material-symbols-outlined" style="font-size:20px">zoom_out</span>
-                    Zoom Out
+                <button type="button" data-crop-action="zoom-out" class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-xs font-medium flex items-center gap-1" title="Zoom Out">
+                    <span class="material-symbols-outlined" style="font-size:16px">zoom_out</span>
+                    <span class="hidden sm:inline">Zoom Out</span>
                 </button>
-                <button type="button" data-crop-action="rotate-left" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Rotate Left">
-                    <span class="material-symbols-outlined" style="font-size:20px">rotate_left</span>
-                    Rotate Left
+                <button type="button" data-crop-action="rotate-left" class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-xs font-medium flex items-center gap-1" title="Rotate Left">
+                    <span class="material-symbols-outlined" style="font-size:16px">rotate_left</span>
+                    <span class="hidden sm:inline">Rotate</span>
                 </button>
-                <button type="button" data-crop-action="rotate-right" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Rotate Right">
-                    <span class="material-symbols-outlined" style="font-size:20px">rotate_right</span>
-                    Rotate Right
+                <button type="button" data-crop-action="rotate-right" class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-xs font-medium flex items-center gap-1" title="Rotate Right">
+                    <span class="material-symbols-outlined" style="font-size:16px">rotate_right</span>
+                    <span class="hidden sm:inline">Rotate</span>
                 </button>
-                <button type="button" data-crop-action="flip-horizontal" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Flip Horizontal">
-                    <span class="material-symbols-outlined" style="font-size:20px">flip</span>
-                    Flip H
+                <button type="button" data-crop-action="flip-horizontal" class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-xs font-medium flex items-center gap-1" title="Flip Horizontal">
+                    <span class="material-symbols-outlined" style="font-size:16px">flip</span>
+                    <span class="hidden sm:inline">Flip H</span>
                 </button>
-                <button type="button" data-crop-action="flip-vertical" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-sm font-medium flex items-center gap-1" title="Flip Vertical">
-                    <span class="material-symbols-outlined" style="font-size:20px;transform:rotate(90deg)">flip</span>
-                    Flip V
+                <button type="button" data-crop-action="flip-vertical" class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 hover:border-blue-500 transition-all text-xs font-medium flex items-center gap-1" title="Flip Vertical">
+                    <span class="material-symbols-outlined" style="font-size:16px;transform:rotate(90deg)">flip</span>
+                    <span class="hidden sm:inline">Flip V</span>
                 </button>
-                <button type="button" data-crop-action="reset" class="px-4 py-2 rounded-lg border-2 border-gray-300 hover:bg-gray-100 hover:border-red-500 transition-all text-sm font-medium flex items-center gap-1" title="Reset">
-                    <span class="material-symbols-outlined" style="font-size:20px">restart_alt</span>
-                    Reset
+                <button type="button" data-crop-action="reset" class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 hover:border-red-500 transition-all text-xs font-medium flex items-center gap-1" title="Reset">
+                    <span class="material-symbols-outlined" style="font-size:16px">restart_alt</span>
+                    <span class="hidden sm:inline">Reset</span>
                 </button>
             </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-            <button type="button" id="cropper-cancel" class="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button type="button" id="cropper-apply" class="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700">Save &amp; Upload</button>
+        <div class="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
+            <button type="button" id="cropper-cancel" class="px-4 py-1.5 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button type="button" id="cropper-apply" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700">Save &amp; Upload</button>
         </div>
     </div>
 </div>

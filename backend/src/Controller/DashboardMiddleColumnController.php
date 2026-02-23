@@ -89,8 +89,21 @@ class DashboardMiddleColumnController extends AppController
             } elseif ($feed === 'reels') {
                 $this->log("Feed is 'reels', filtering for is_reel = true...", 'debug');
                 // Only show posts marked as reels (posts with exactly 1 video attachment)
-                $query->where(['Posts.is_reel' => true]);
-                $this->log("Filtering for posts with is_reel = true", 'debug');
+                // Use strict boolean comparison to ensure only TRUE values, not NULL or FALSE
+                $query->where([
+                    'Posts.is_reel' => true,
+                    'Posts.is_reel IS NOT' => null
+                ]);
+                
+                // Additional safety: ensure posts actually have video attachments
+                $query->matching('PostAttachments', function (Query $q) {
+                    return $q->where([
+                        'PostAttachments.file_type' => 'video',
+                        'PostAttachments.upload_status' => 'completed'
+                    ]);
+                });
+                
+                $this->log("Filtering for posts with is_reel = true AND has video attachments", 'debug');
             } else {
                 $this->log("Feed is 'foryou' or no user, showing all posts (excluding reels)", 'debug');
                 // For 'foryou' feed, exclude reels to keep them separate

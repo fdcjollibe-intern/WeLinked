@@ -294,7 +294,7 @@ class BirthdaysController extends AppController
                 ->orderBy(['BirthdayMessages.created_at' => 'DESC'])
                 ->all();
             $this->set(compact('messages'));
-            $this->viewBuilder()->disableAutoLayout();
+            $this->viewBuilder()->disableAutoLayout();  
             return;
         }
 

@@ -171,6 +171,22 @@
     </div>
 </section>
 
+<!-- Unfollow Confirmation Modal -->
+<div id="unfollow-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl transform transition-all mx-4">
+        <h3 class="text-xl font-semibold text-center mb-2">Unfollow User</h3>
+        <p class="text-gray-600 text-center mb-6" id="unfollow-message">Are you sure you want to unfollow this user?</p>
+        <div class="flex gap-3">
+            <button id="unfollow-cancel" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+                Cancel
+            </button>
+            <button id="unfollow-confirm" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors">
+                Unfollow
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
     if (window.__friendsListScriptLoaded) {
@@ -310,16 +326,29 @@
         });
     });
 
-    document.addEventListener('click', function(e) {
-        const unfollowBtn = e.target.closest('.unfollow-btn');
-        if (!unfollowBtn) return;
+    // Unfollow Modal Logic
+    let currentUnfollowData = null;
+    const unfollowModal = document.getElementById('unfollow-modal');
+    const unfollowMessage = document.getElementById('unfollow-message');
+    const unfollowCancelBtn = document.getElementById('unfollow-cancel');
+    const unfollowConfirmBtn = document.getElementById('unfollow-confirm');
+    
+    function showUnfollowModal(userId, username, button) {
+        currentUnfollowData = { userId, username, button };
+        unfollowMessage.textContent = `Are you sure you want to unfollow @${username}?`;
+        unfollowModal.classList.remove('hidden');
+    }
+    
+    function hideUnfollowModal() {
+        unfollowModal.classList.add('hidden');
+        currentUnfollowData = null;
+    }
+    
+    function performUnfollow() {
+        if (!currentUnfollowData) return;
         
-        const userId = unfollowBtn.dataset.userId;
-        const username = unfollowBtn.dataset.username;
-        
-        if (!confirm(`Are you sure you want to unfollow @${username}?`)) {
-            return;
-        }
+        const { userId, username, button: unfollowBtn } = currentUnfollowData;
+        hideUnfollowModal();
         
         unfollowBtn.disabled = true;
         unfollowBtn.textContent = 'Unfollowing...';
@@ -354,6 +383,28 @@
             unfollowBtn.disabled = false;
             unfollowBtn.textContent = 'Unfollow';
         });
+    }
+    
+    // Event listeners for modal
+    unfollowCancelBtn.addEventListener('click', hideUnfollowModal);
+    unfollowConfirmBtn.addEventListener('click', performUnfollow);
+    
+    // Close modal on backdrop click
+    unfollowModal.addEventListener('click', function(e) {
+        if (e.target === unfollowModal) {
+            hideUnfollowModal();
+        }
+    });
+    
+    // Handle unfollow button clicks
+    document.addEventListener('click', function(e) {
+        const unfollowBtn = e.target.closest('.unfollow-btn');
+        if (!unfollowBtn) return;
+        
+        const userId = unfollowBtn.dataset.userId;
+        const username = unfollowBtn.dataset.username;
+        
+        showUnfollowModal(userId, username, unfollowBtn);
     });
 })();
 </script>

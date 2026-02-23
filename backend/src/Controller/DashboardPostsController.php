@@ -144,7 +144,17 @@ class DashboardPostsController extends AppController
                         $post->is_reel = true;
                         $postsTable->save($post);
                         $this->log("✓ Post marked as reel (single video attachment)", 'info');
+                    } else {
+                        // Explicitly mark as NOT a reel if it doesn't meet criteria
+                        $post->is_reel = false;
+                        $postsTable->save($post);
+                        $this->log("✓ Post marked as NOT a reel (totalCount: $totalCount, videoCount: $videoCount)", 'info');
                     }
+                } else {
+                    // No media attachments - explicitly mark as NOT a reel
+                    $post->is_reel = false;
+                    $postsTable->save($post);
+                    $this->log("✓ Post marked as NOT a reel (no media)", 'info');
                 }
                 
                 // Save mentions
@@ -259,6 +269,34 @@ class DashboardPostsController extends AppController
                 if (!empty($post->content_image_path) && in_array($post->content_image_path, $removeAttachments)) {
                     $post->content_image_path = null;
                 }
+            }
+            
+            // Recalculate is_reel status after edits
+            $attachmentsTable = $this->fetchTable('PostAttachments');
+            $remainingAttachments = $attachmentsTable->find()
+                ->where([
+                    'post_id' => $postId,
+                    'upload_status' => 'completed'
+                ])
+                ->all()
+                ->toArray();
+            
+            $videoCount = 0;
+            $totalCount = count($remainingAttachments);
+            
+            foreach ($remainingAttachments as $att) {
+                if ($att->file_type === 'video') {
+                    $videoCount++;
+                }
+            }
+            
+            // Update is_reel based on current attachments
+            if ($totalCount === 1 && $videoCount === 1) {
+                $post->is_reel = true;
+                $this->log("✓ Post $postId updated: marked as reel", 'info');
+            } else {
+                $post->is_reel = false;
+                $this->log("✓ Post $postId updated: marked as NOT a reel (total: $totalCount, videos: $videoCount)", 'info');
             }
             
             if ($postsTable->save($post)) {
